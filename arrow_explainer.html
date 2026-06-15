@@ -1,0 +1,1548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ARROW Simulator</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-soft: #f6f8fc;
+    --panel: #ffffff;
+    --panel2: #f6f8fc;
+    --ink: #16203a;
+    --muted: #5a6781;
+    --fifo: #7082B8;
+    --fifo-soft: #ccfbf1;
+    --ltdm: #d97706;
+    --ltdm-soft: #fef3c7;
+    --good: #15803d;
+    --good-soft: #dcfce7;
+    --bad: #dc2626;
+    --bad-soft: #fee2e2;
+    --accent: #6d4fe0;
+    --accent-soft: #ede9fe;
+    --line: #dde3ef;
+    --shadow: 0 4px 18px rgba(22,32,58,.07);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.6;
+    font-size: 16.5px;
+  }
+  a { color: var(--accent); }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 18px 22px 100px; }
+
+  /* top nav for presenting */
+  nav.topnav {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(255,255,255,.92); backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+    display: flex; gap: 4px; flex-wrap: wrap; justify-content: center;
+    padding: 8px 10px;
+  }
+  nav.topnav a {
+    text-decoration: none; color: var(--muted); font-size: .8rem; font-weight: 600;
+    padding: 5px 11px; border-radius: 999px; transition: .15s;
+  }
+  nav.topnav a:hover { background: var(--accent-soft); color: var(--accent); }
+
+  header.hero { text-align: center; padding: 44px 16px 14px; }
+  header.hero h1 { font-size: 2.5rem; margin: 0 0 10px; letter-spacing: -.5px; }
+  header.hero p { color: var(--muted); margin: 0 auto; max-width: 760px; font-size: 1.05rem; }
+  .hero-links { display:flex; justify-content:center; gap:12px; flex-wrap:wrap; margin-top:14px; }
+  .hero-link {
+    display:inline-flex; align-items:center; gap:8px; text-decoration:none;
+    border:1px solid var(--line); background:#fff; color:var(--ink);
+    border-radius:999px; padding:8px 14px; font-size:.92rem; font-weight:700;
+    box-shadow:0 2px 8px rgba(22,32,58,.05); transition:.15s;
+  }
+  .hero-link:hover { border-color:var(--accent); background:var(--accent-soft); color:var(--accent); }
+  .hero-link svg { width:18px; height:18px; display:block; }
+  .pill {
+    display:inline-block; font-size:.74rem; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--accent); background:var(--accent-soft); border-radius:999px; padding:5px 14px; margin-bottom:14px; font-weight:700;
+  }
+
+  section {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 30px 34px;
+    margin: 28px 0;
+    box-shadow: var(--shadow);
+    scroll-margin-top: 70px;
+  }
+  .secnum {
+    display:inline-flex; align-items:center; justify-content:center;
+    width:34px; height:34px; border-radius:10px; background:var(--accent); color:#fff;
+    font-weight:800; font-size:1.05rem; margin-right:10px; vertical-align:middle;
+  }
+  section h2 { margin: 0 0 6px; font-size: 1.55rem; display:flex; align-items:center; }
+  .sub { color: var(--muted); margin: 0 0 22px; font-size: 1rem; }
+  .grid3 { display:grid; grid-template-columns: repeat(3,1fr); gap:16px; }
+  .grid2 { display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
+  @media (max-width: 860px){ .grid3,.grid2{ grid-template-columns:1fr; } }
+  .card {
+    background: var(--panel2); border:1px solid var(--line); border-radius:14px; padding:18px 20px;
+  }
+  .card h3 { margin:0 0 8px; font-size:1.08rem; }
+  .card p { margin:0; color:var(--muted); font-size:.95rem; }
+  .keypoints { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:18px 0 0; }
+  @media (max-width: 860px){ .keypoints{ grid-template-columns:1fr 1fr; } }
+  .keypoint { background:#fff; border:1px solid var(--line); border-radius:12px; padding:14px 15px; }
+  .keypoint b { display:block; font-size:1.2rem; color:var(--ink); line-height:1.2; }
+  .keypoint span { display:block; margin-top:5px; color:var(--muted); font-size:.82rem; line-height:1.35; }
+  .tag { font-size:.72rem; padding:3px 9px; border-radius:6px; font-weight:700; letter-spacing:.03em; }
+  .tag.actor{ background:var(--accent-soft); color:var(--accent);}
+  .tag.wm{ background:var(--good-soft); color:var(--good);}
+  .tag.buf{ background:var(--fifo-soft); color:var(--fifo);}
+  code, .mono { font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; }
+  .mono { background:#eef1f8; border:1px solid var(--line); border-radius:6px; padding:1px 6px; font-size:.85em; color:#3b4768; }
+
+  /* Ratio control */
+  .ratio-btns { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:20px; }
+  .ratio-btns button {
+    flex:1; min-width:160px; cursor:pointer; padding:15px 14px; border-radius:13px;
+    border:2px solid var(--line); background:#fff; color:var(--ink);
+    font-size:1.05rem; font-weight:700; transition:.15s; text-align:left;
+  }
+  .ratio-btns button small{ display:block; font-weight:500; color:var(--muted); font-size:.78rem; margin-top:4px;}
+  .ratio-btns button.active { border-color:var(--accent); background:var(--accent-soft); box-shadow:0 0 0 3px rgba(109,79,224,.15);}
+  .ratio-btns button:hover { border-color:var(--accent); }
+
+  .split-bar { height:52px; border-radius:12px; overflow:hidden; display:flex; border:1px solid var(--line); }
+  .split-bar .seg { display:flex; align-items:center; justify-content:center; font-weight:800; color:#fff; font-size:1.05rem; transition:flex-basis .4s ease; }
+  .seg.fifo{ background:linear-gradient(180deg,#2dd4bf,#7082B8);}
+  .seg.ltdm{ background:linear-gradient(180deg,#fbbf24,#d97706);}
+  .stat-row { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:16px;}
+  @media(max-width:860px){ .stat-row{ grid-template-columns:1fr 1fr; } }
+  .stat { background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:14px; text-align:center;}
+  .stat .v { font-size:1.5rem; font-weight:800; }
+  .stat .v.fifo{ color:var(--fifo);} .stat .v.ltdm{ color:var(--ltdm);}
+  .stat .k { color:var(--muted); font-size:.73rem; text-transform:uppercase; letter-spacing:.08em; font-weight:600; }
+
+  .legend{ display:flex; gap:20px; flex-wrap:wrap; margin:6px 0 16px; font-size:.88rem; color:var(--muted);}
+  .legend span{ display:inline-flex; align-items:center; gap:7px;}
+  .dot{ width:13px;height:13px;border-radius:4px;display:inline-block;}
+  .dot.fifo{background:var(--fifo);} .dot.ltdm{background:var(--ltdm);} .dot.new{background:var(--good);} .dot.hit{background:var(--bad);}
+
+  /* buffer grids */
+  .buf-wrap{ display:grid; grid-template-columns:1fr 1fr; gap:20px;}
+  @media(max-width:860px){ .buf-wrap{ grid-template-columns:1fr; } }
+  .buf-box h4{ margin:0 0 4px; display:flex; align-items:center; gap:8px; font-size:1.02rem;}
+  .buf-box .desc{ color:var(--muted); font-size:.85rem; margin:0 0 10px; min-height:38px;}
+  .grid{ display:grid; grid-template-columns:repeat(16,1fr); gap:3px; }
+  .cell{ aspect-ratio:1; border-radius:3px; background:#eef1f8; border:1px solid #dde3ef; transition:.2s;
+    display:flex; align-items:center; justify-content:center; font-size:.68rem; font-weight:800; color:var(--muted);}
+  .cell.fill-fifo{ background:var(--fifo); border-color:var(--fifo); color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.25);}
+  .cell.fill-ltdm{ background:var(--ltdm); border-color:var(--ltdm); color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.25);}
+  .cell.new{ background:var(--good); border-color:var(--good); color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.25); box-shadow:0 0 6px rgba(21,128,61,.5);}
+  .cell.evict{ background:var(--bad); border-color:var(--bad); box-shadow:0 0 6px rgba(220,38,38,.5);}
+
+  /* per-buffer task mix (stacked bar under grid) */
+  .buf-stack-wrap{ margin-top:10px; }
+  .buf-stack-label{ font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:5px; }
+  .buf-stack{
+    height:22px; border-radius:6px; overflow:hidden; border:1px solid var(--line);
+    background:#eef1f8;
+  }
+  .buf-stack-inner{ display:flex; height:100%; width:100%; }
+  .buf-stack-seg{
+    display:flex; align-items:center; justify-content:center;
+    font-size:.68rem; font-weight:800; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.3);
+    min-width:0; transition:width .25s ease;
+  }
+  .buf-stack-empty{ height:22px; display:flex; align-items:center; justify-content:center;
+    font-size:.72rem; color:var(--muted); border:1px dashed var(--line); border-radius:6px; }
+  .buf-stack-legend{ display:flex; flex-wrap:wrap; gap:8px 12px; margin-top:6px; font-size:.72rem; color:var(--muted); }
+  .buf-stack-legend span{ display:inline-flex; align-items:center; gap:4px; }
+  .buf-stack-legend i{ width:8px; height:8px; border-radius:2px; display:inline-block; }
+
+  /* buffer task distribution chart */
+  .ltdm-plot-box{
+    margin-top:22px; padding:18px 20px; background:var(--panel2);
+    border:1px solid var(--line); border-radius:14px;
+  }
+  .ltdm-plot-box h4{ margin:0 0 4px; font-size:1.02rem; }
+  .ltdm-plot-box .plot-sub{ color:var(--muted); font-size:.88rem; margin:0 0 12px; }
+  #bufTaskPlot{ width:100%; height:auto; display:block; }
+  .ltdm-plot-legend{ display:flex; flex-wrap:wrap; gap:14px; margin-top:10px; font-size:.8rem; color:var(--muted); }
+  .ltdm-plot-legend span{ display:inline-flex; align-items:center; gap:6px; }
+  .ltdm-plot-cap{ font-size:.85rem; color:var(--ink); margin:10px 0 0; min-height:1.4em; }
+
+  /* controls */
+  .btn{ cursor:pointer; border:1px solid var(--line); background:#fff; color:var(--ink);
+        border-radius:11px; padding:11px 18px; font-weight:700; font-size:.95rem; transition:.15s;}
+  .btn:hover{ border-color:var(--accent); color:var(--accent);}
+  .btn.primary{ background:var(--accent); border-color:var(--accent); color:#fff;}
+  .btn.primary:hover{ background:#5b3fd0; color:#fff;}
+  .btn:disabled, .btn.primary:disabled{ opacity:.45; cursor:not-allowed; pointer-events:none;}
+  .btn.ghost{ background:transparent;}
+  .btn.task-color-hold{
+    display:inline-flex; align-items:center; gap:8px; padding:10px 14px;
+    user-select:none; -webkit-user-select:none;
+  }
+  .btn.task-color-hold.active{ border-color:var(--accent); background:var(--accent-soft); box-shadow:0 0 0 3px rgba(109,79,224,.15); }
+  .task-color-strip{ display:inline-flex; gap:2px; height:14px; border-radius:4px; overflow:hidden; border:1px solid rgba(0,0,0,.08); }
+  .task-color-strip i{ display:block; width:10px; height:100%; }
+  .controls{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:16px;}
+  .buf-action-bar{ margin: 18px 0 8px; }
+  .buf-action-bar .controls{ margin-top:0; }
+  .buf-status-line{ margin:10px 0 0; font-size:.88rem; color:var(--muted); min-height:1.4em; line-height:1.5; }
+
+  /* minibatch tally */
+  .tally{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:14px;}
+  .tally .t{ background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:16px;text-align:center;}
+  .tally .t .big{ font-size:2rem; font-weight:800;}
+  .tally .t.fifo .big{color:var(--fifo);} .tally .t.ltdm .big{color:var(--ltdm);}
+  .barline{ height:10px; border-radius:6px; background:#e8ecf5; overflow:hidden; margin-top:10px; border:1px solid var(--line);}
+  .barline > i{ display:block; height:100%; }
+  .coin{ font-size:1.1rem; font-weight:700; min-height:30px; margin-top:12px;}
+
+  /* minibatch visualizer (section 5) */
+  .mb-walkthrough{
+    margin: 22px 0 20px; border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
+  }
+  .mb-stage-header{
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 14px 20px; background: var(--panel2); border-bottom: 1px solid var(--line);
+  }
+  .mb-dots{ display: flex; gap: 7px; }
+  .mb-dot{
+    width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--line);
+    background: #fff; font-size: .8rem; font-weight: 800; color: var(--muted);
+    display: flex; align-items: center; justify-content: center; transition: .2s;
+  }
+  .mb-dot.done{ background: var(--good); border-color: var(--good); color: #fff; }
+  .mb-dot.active{ background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 0 0 3px rgba(109,79,224,.2); }
+  .mb-stage-label{ font-size: .9rem; font-weight: 700; color: var(--muted); }
+  .mb-stage-body{ padding: 22px 24px; background: #fff; min-height: 200px; }
+  .mb-idle-hint{
+    display: flex; align-items: center; justify-content: center; flex-direction: column;
+    gap: 10px; min-height: 160px; color: var(--muted); font-size: 1rem; font-weight: 600;
+  }
+  .mb-idle-hint svg{ opacity: .25; }
+  /* stage 1: coin flip */
+  .mb-buffers{ display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 4px; }
+  .mb-buf-card{
+    padding: 20px 18px; border-radius: 14px; border: 2px solid var(--line);
+    text-align: center; transition: .25s; background: var(--panel2);
+  }
+  .mb-buf-card .bname{ font-size: 1.2rem; font-weight: 800; margin-bottom: 6px; }
+  .mb-buf-card .bweight{ font-size: .85rem; color: var(--muted); font-weight: 600; }
+  .mb-buf-card.winner{ border-width: 3px; box-shadow: 0 0 0 4px rgba(109,79,224,.1); }
+  .mb-buf-card.winner.fifo{ border-color: var(--fifo); background: #f0fafa; }
+  .mb-buf-card.winner.ltdm{ border-color: var(--ltdm); background: #fefbf0; }
+  .mb-buf-card.loser{ opacity: .3; }
+  .mb-win-badge{
+    display: inline-block; margin-top: 10px; padding: 4px 12px;
+    border-radius: 999px; font-size: .78rem; font-weight: 800;
+    background: var(--accent); color: #fff; letter-spacing: .04em;
+  }
+  /* stage 2: slot grid */
+  .mb-slot-section{ margin-top: 4px; }
+  .mb-slot-label{ font-size: .88rem; color: var(--muted); margin: 0 0 12px; }
+  .mb-slot-grid{
+    display: grid; grid-template-columns: repeat(32, 1fr); gap: 3px;
+    padding: 10px; background: var(--panel2); border-radius: 10px; border: 1px solid var(--line);
+  }
+  .mb-slot{
+    aspect-ratio: 1; border-radius: 3px; background: #e8ecf5; border: 1px solid #dde3ef;
+    transition: background .15s, transform .15s;
+  }
+  .mb-slot.picked.fifo{ background: var(--fifo); border-color: var(--fifo); transform: scale(1.18); box-shadow: 0 0 4px rgba(15,118,110,.4); }
+  .mb-slot.picked.ltdm{ background: var(--ltdm); border-color: var(--ltdm); transform: scale(1.18); box-shadow: 0 0 4px rgba(217,119,6,.4); }
+  .mb-slot-caption{ font-size: .82rem; color: var(--muted); margin-top: 10px; }
+  /* stage 3: window */
+  .mb-window-section{ margin-top: 4px; }
+  .mb-window-label{ font-size: .88rem; color: var(--muted); margin: 0 0 14px; }
+  .mb-chunk-rows{ display: flex; flex-direction: column; gap: 7px; }
+  .mb-crow{ display: grid; grid-template-columns: 24px 1fr 90px; gap: 10px; align-items: center; font-size: .75rem; color: var(--muted); }
+  .mb-crow .cnum{ font-weight: 800; color: var(--ink); text-align: right; }
+  .mb-cbar{ position: relative; height: 18px; border-radius: 5px; background: #eef1f8; border: 1px solid #dde3ef; overflow: hidden; }
+  .mb-cwin{ position: absolute; top: 0; bottom: 0; border-radius: 4px; }
+  .mb-cwin.fifo{ background: var(--fifo); opacity: .85; }
+  .mb-cwin.ltdm{ background: var(--ltdm); opacity: .85; }
+  .mb-crange{ font-family: ui-monospace,monospace; font-size: .72rem; }
+
+  /* pipeline stepper */
+  .pipe{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px;}
+  .pipe .node{ flex:1; min-width:122px; text-align:center; padding:11px 8px; border-radius:11px;
+    border:2px solid var(--line); background:#fff; color:var(--muted); font-size:.83rem; font-weight:700; transition:.2s; cursor:pointer;}
+  .pipe .node.active{ border-color:var(--accent); color:var(--accent); background:var(--accent-soft); box-shadow:0 0 0 3px rgba(109,79,224,.12);}
+  .pipe .node.done{ color:var(--good); border-color:#a7d8b9; background:var(--good-soft);}
+  .stepbody{ background:var(--panel2); border:1px solid var(--line); border-radius:14px; padding:22px; min-height:160px;}
+  .stepbody h3{ margin:0 0 10px; font-size:1.2rem;}
+  .stepbody .nums{ display:flex; gap:10px; flex-wrap:wrap; margin-top:14px;}
+  .chip{ background:#fff; border:1px solid var(--line); border-radius:9px; padding:7px 12px; font-size:.86rem;}
+  .chip b{ color:var(--ink); font-size:1rem;} .chip span{ color:var(--muted);}
+  .realtag{ font-size:.72rem; padding:4px 9px; border-radius:6px; font-weight:800; letter-spacing:.03em;}
+  .realtag.real{ background:var(--bad-soft); color:var(--bad);}
+  .realtag.dream{ background:var(--accent-soft); color:var(--accent);}
+  .realtag.none{ background:#eef1f8; color:var(--muted);}
+
+  /* curriculum */
+  .sched-btns { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:18px;}
+  .sched-btns button {
+    flex:1; min-width:220px; cursor:pointer; padding:15px 16px; border-radius:13px;
+    border:2px solid var(--line); background:#fff; color:var(--ink);
+    font-size:1.02rem; font-weight:700; transition:.15s; text-align:left;
+  }
+  .sched-btns button small{ display:block; font-weight:500; color:var(--muted); font-size:.8rem; margin-top:4px;}
+  .sched-btns button.active{ border-color:var(--good); background:var(--good-soft); box-shadow:0 0 0 3px rgba(21,128,61,.12);}
+  .sched-btns button:hover{ border-color:var(--good); }
+  .cyclebar{ display:flex; gap:8px; margin:0 0 12px; }
+  .cyclebar .cyc{
+    flex:1; text-align:center; font-size:.8rem; font-weight:800; letter-spacing:.06em; text-transform:uppercase;
+    border-radius:9px; padding:7px 4px; border:2px dashed var(--line); color:var(--muted); transition:.2s;
+  }
+  .cyclebar .cyc.on{ border-style:solid; border-color:var(--accent); color:var(--accent); background:var(--accent-soft);}
+  .timeline{ display:flex; gap:6px; margin:10px 0 14px; }
+  .timeline .game{ flex:1; text-align:center; padding:12px 4px; border-radius:10px; border:2px solid var(--line);
+    background:#fff; font-size:.72rem; color:var(--muted); transition:.2s; font-weight:600; line-height:1.35; word-break:break-word;}
+  .timeline .game.cur{ transform:translateY(-3px); box-shadow:0 4px 12px rgba(22,32,58,.12); font-weight:700;}
+  .timeline .game small{ display:block; color:var(--muted); font-size:.68rem; font-weight:500;}
+  .slider-row{ display:flex; align-items:center; gap:14px; margin-top:8px;}
+  .slider-row input[type=range]{ flex:1; accent-color:var(--accent); height:6px;}
+  .epochbar{ position:relative; height:14px; border-radius:8px; background:#e8ecf5; border:1px solid var(--line); overflow:hidden; margin-top:14px;}
+  .epochbar > i{ position:absolute; top:0; bottom:0; }
+  .epochbar .seg-task{ opacity:.55; }
+  .epochbar .marker{ width:3px; z-index:2; transition:background .2s, left .05s;}
+
+  .rollout-cmp{ display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media(max-width:860px){ .rollout-cmp{ grid-template-columns:1fr;} }
+
+  table.gloss{ width:100%; border-collapse:collapse; font-size:.95rem;}
+  table.gloss td{ border-top:1px solid var(--line); padding:11px 8px; vertical-align:top;}
+  table.gloss td:first-child{ width:200px; font-weight:700; color:var(--ink);}
+  table.gloss td:last-child{ color:var(--muted);}
+
+  .note{ font-size:.9rem; color:#4c5878; background:var(--accent-soft); border-left:4px solid var(--accent); padding:11px 16px; margin:18px 0 0; border-radius:0 10px 10px 0;}
+  .footer{ text-align:center; color:var(--muted); font-size:.82rem; margin-top:36px;}
+
+  @media print {
+    nav.topnav{ display:none; }
+    section{ break-inside:avoid; box-shadow:none; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <a href="#s1">1 · Overview</a>
+  <a href="#s2">2 · Architecture</a>
+  <a href="#s3">3 · Curriculum</a>
+  <a href="#s4">4 · Replay buffer</a>
+  <a href="#s5">5 · Training loop</a>
+  <a href="#s6">6 · Storing</a>
+  <a href="#s7">7 · Sampling</a>
+  <a href="#s8">8 · Why it works</a>
+  <a href="#gloss">Glossary</a>
+</nav>
+
+<div class="wrap">
+
+  <header class="hero">
+    <div class="pill">ARROW Simulator</div>
+    <h1>ARROW: Augmented Replay for RObust World models</h1>
+    <p>A model-based continual-reinforcement-learning method that extends DreamerV3 with an
+       augmented replay memory: a recency-biased FIFO store paired with a long-term,
+       distribution-matching buffer. The simulator links the paper's method, code
+       (<code class="mono">Code/ARROW_and_DV3</code>), and experiment configs through the
+       <code class="mono">--arrow-replay-ratio</code> and <code class="mono">swap_sched</code>
+       design choices. Sections follow the code path in <code class="mono">train.py</code>: setup (curriculum, replay buffer), then the per-epoch loop (collect → evaluate → train → advance).</p>
+
+    <div class="hero-links" aria-label="External links">
+      <a class="hero-link" href="https://openreview.net/pdf?id=3FK2tFwNwK" target="_blank" rel="noopener noreferrer">
+        <span>Paper PDF</span>
+      </a>
+      <a class="hero-link" href="https://github.com/Cerenaut/ARROW" target="_blank" rel="noopener noreferrer">
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
+          <path d="M12 .5A11.5 11.5 0 0 0 8.36 22.9c.58.1.79-.25.79-.56v-2.02c-3.22.7-3.9-1.38-3.9-1.38-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.16.08 1.78 1.2 1.78 1.2 1.04 1.77 2.72 1.26 3.38.96.11-.75.41-1.26.74-1.55-2.57-.29-5.27-1.28-5.27-5.72 0-1.26.45-2.3 1.19-3.11-.12-.29-.52-1.47.11-3.07 0 0 .98-.31 3.18 1.19A10.9 10.9 0 0 1 12 6.04c.98 0 1.96.13 2.88.39 2.2-1.5 3.17-1.19 3.17-1.19.64 1.6.24 2.78.12 3.07.74.81 1.18 1.85 1.18 3.11 0 4.45-2.71 5.43-5.29 5.72.42.36.79 1.07.79 2.16v3.04c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5Z"/>
+        </svg>
+        <span>GitHub Repository</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- ===================== 1. THREE COMPONENTS ===================== -->
+  <section id="s1">
+    <h2><span class="secnum">1</span> ARROW as a model-based CRL system</h2>
+    <p class="sub">ARROW is not a separate policy architecture. It is a DreamerV3-style world-model agent whose replay distribution is redesigned for continual learning under a fixed memory budget.</p>
+    <div class="grid3">
+      <div class="card">
+        <h3><span class="tag actor">AGENT</span> &nbsp;Actor + Critic</h3>
+        <p>The actor selects actions and the critic estimates value from latent world-model states. Both are trained on imagined rollouts rather than directly on raw observations. Code: <code class="mono">ac.py</code>.</p>
+      </div>
+      <div class="card">
+        <h3><span class="tag wm">MODEL</span> &nbsp;World Model</h3>
+        <p>A recurrent state-space model learns latent dynamics, image reconstruction, reward, and continuation predictions from an internal state <code class="mono">(z, h)</code>. Code: <code class="mono">wm.py</code> and <code class="mono">rssm.py</code>.</p>
+      </div>
+      <div class="card">
+        <h3><span class="tag buf">MEMORY</span> &nbsp;Augmented Replay</h3>
+        <p>The contribution is the dual replay distribution: a <b style="color:var(--fifo)">FIFO</b> buffer for recent experience and a <b style="color:var(--ltdm)">LTDM</b> reservoir that approximates the global history. Code: <code class="mono">replay.py</code>.</p>
+      </div>
+    </div>
+    <div class="keypoints">
+      <div class="keypoint"><b>2<sup>19</sup></b><span>observations total replay budget, matched against DreamerV3 and TES-SAC</span></div>
+      <div class="keypoint"><b>512</b><span>timesteps per stored spliced rollout</span></div>
+      <div class="keypoint"><b>6 tasks</b><span>per curriculum in Atari and CoinRun</span></div>
+      <div class="keypoint"><b>No task IDs</b><span>shared model and memory across the whole sequence</span></div>
+    </div>
+    <p class="note">Contribution framing: ARROW is a working recipe for distribution-aware replay in a world-model agent, not a new neural architecture or a new prioritized sampling rule.</p>
+  </section>
+
+  <!-- ===================== 2. ARCHITECTURE ===================== -->
+  <section id="s2">
+    <h2><span class="secnum">2</span> Architecture</h2>
+    <p class="sub">ARROW keeps the DreamerV3-style architecture and changes the replay system that trains it. The agent is organized as a world model, an actor-critic controller, and an augmented replay memory.</p>
+    <div class="grid2" style="margin-bottom:16px">
+      <div class="card">
+        <h3>World model: RSSM latent dynamics</h3>
+        <p style="margin-bottom:8px"><b style="color:var(--fifo)">h</b> is a deterministic GRU state that carries temporal context. <br>
+        <b style="color:var(--ltdm)">z</b> is a stochastic latent state with 32 discrete variables and 32 classes.</p>
+        <p>The model updates <span class="mono">h<sub>t+1</sub> = GRU(h<sub>t</sub>, z<sub>t</sub>, a<sub>t</sub>)</span>, infers posterior latents from observations, and uses prior latents for open-loop imagination.</p>
+      </div>
+      <div class="card">
+        <h3>Encoder, decoder, and prediction heads</h3>
+        <p>Observations are 64x64 RGB frames encoded by a CNN into latent states. The world model reconstructs images and predicts reward and continuation signals, trained with KL balancing to stabilize latent transitions.</p>
+      </div>
+      <div class="card">
+        <h3>Actor-critic controller</h3>
+        <p>The actor and critic are MLPs with 2 layers and 512 hidden features. They consume <span class="mono">concat(z, h)</span>, not raw pixels, and support 18 Atari actions or 15 CoinRun actions from the configs.</p>
+      </div>
+      <div class="card">
+        <h3>Replay interface</h3>
+        <p>The architecture receives training data as 512-step spliced rollouts. ARROW's FIFO+LTDM replay changes the distribution of world-model updates while leaving the RSSM and actor-critic architecture matched to DreamerV3.</p>
+      </div>
+    </div>
+    <div class="rollout-cmp">
+      <div class="card" style="border-color:#f3c1c1">
+        <h3><span class="realtag real">REAL</span> &nbsp;Environment rollout</h3>
+        <p style="margin-bottom:8px">Code: <code class="mono">generate_trajectories</code>. The actor, or a random policy at epoch 0, interacts with the environment; observations, actions, rewards, continuations, and resets are stored.</p>
+        <p class="mono" style="font-size:.8rem;color:var(--fifo)">obs → encode → (z,h) → actor → action → real env → reward, next obs</p>
+      </div>
+      <div class="card" style="border-color:#d4c8f5">
+        <h3><span class="realtag dream">DREAM</span> &nbsp;Imagined rollout</h3>
+        <p style="margin-bottom:8px">Code: <code class="mono">dream_rollout</code>. The actor-critic is trained from short imagined trajectories generated by the RSSM, with no additional environment interaction.</p>
+        <p class="mono" style="font-size:.8rem;color:var(--accent)">(z,h) → actor → action → WM predicts reward + next (z,h) → repeat ×16</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 3. CURRICULUM ===================== -->
+  <section id="s3">
+    <h2><span class="secnum">3</span> Curriculum setup — <code class="mono" style="font-size:.7em">swap_sched</code></h2>
+    <p class="sub">At startup, <code class="mono">config.get_env_schedule()</code> builds <code class="mono">SequentialEnvironments</code>. The configs instantiate two task suites and three curriculum settings: default order, reversed order, and two-cycle training. All use the same total budget over 6 tasks; <code class="mono">swap_sched</code> controls task duration.</p>
+
+    <div class="sched-btns" id="suiteBtns" style="margin-bottom:14px">
+      <button data-suite="atari" class="active">Atari · <i>without</i> shared structure
+        <small>6 unrelated games — different visuals, dynamics &amp; reward scales</small></button>
+      <button data-suite="coinrun">CoinRun · <i>with</i> shared structure
+        <small>6 cumulative Procgen variants — representation reuse and transfer are possible</small></button>
+    </div>
+
+    <div class="sched-btns" id="schedBtns">
+      <button data-swap="90" class="active">swap_sched = 90 · One-cycle
+        <small>each task once · 90 epochs per task · 6 × 90 = 540</small></button>
+      <button data-swap="45">swap_sched = 45 · Two-cycle
+        <small>each task twice · 45 epochs per visit · cycle ends at 270, then back to task 1</small></button>
+    </div>
+
+    <div class="cyclebar" id="cycleBar">
+      <div class="cyc on" id="cyc1">Cycle 1 · epochs 0–539</div>
+      <div class="cyc" id="cyc2" style="display:none">Cycle 2 · epochs 270–539</div>
+    </div>
+
+    <div class="timeline" id="timeline"></div>
+
+    <div class="epochbar" id="epochBar"></div>
+
+    <div class="slider-row">
+      <span style="color:var(--muted);font-size:.85rem;font-weight:600">Epoch</span>
+      <input type="range" id="epochSlider" min="0" max="539" value="0" />
+      <span class="mono" id="epochVal" style="min-width:120px;text-align:right">0 / 539</span>
+    </div>
+    <div class="controls" style="margin-top:12px">
+      <button class="btn primary" id="playEpoch">Play curriculum</button>
+      <button class="btn ghost" id="pauseEpoch">Pause</button>
+      <span style="color:var(--muted);font-size:.85rem">Play animates epochs 0-539; dragging the slider pauses playback.</span>
+    </div>
+    <p class="note">The agent receives pixels, actions, rewards, continuation flags, and reset flags, but no explicit task-change label. Evaluation is performed every 10th epoch on all 6 tasks in the selected suite.</p>
+    <p class="note" id="curNote"></p>
+
+    <div id="variantBox" style="display:none; margin-top:20px">
+      <h3 style="margin:0 0 4px; font-size:1.08rem">The 6 CoinRun variants (Procgen flags, cumulative)</h3>
+      <p style="color:var(--muted); font-size:.9rem; margin:0 0 10px">Each task name lists the cumulative perturbations active in the Procgen variant. The variants share a base environment but change visual and camera properties.</p>
+      <table class="gloss" id="variantTable">
+        <tr><td>CoinRun</td><td><span class="mono">—</span> &nbsp;regularly rendered game</td></tr>
+        <tr><td>CoinRun+NB</td><td><span class="mono">use_backgrounds = False</span> &nbsp;removes decorative backgrounds</td></tr>
+        <tr><td>CoinRun+NB+RT</td><td><span class="mono">restrict_themes = True</span> &nbsp;restricts the set of level themes</td></tr>
+        <tr><td>CoinRun+NB+RT+GA</td><td><span class="mono">use_generated_assets = True</span> &nbsp;enables procedurally generated assets</td></tr>
+        <tr><td>CoinRun+NB+RT+GA+MA</td><td><span class="mono">use_monochrome_assets = True</span> &nbsp;enables monochrome assets</td></tr>
+        <tr><td>CoinRun+NB+RT+GA+MA+CA</td><td><span class="mono">center_agent = False</span> &nbsp;camera does not remain centered on the agent</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===================== 4. REPLAY BUFFER ===================== -->
+  <section id="s4">
+    <h2><span class="secnum">4</span> Replay buffer setup </h2>
+    <p class="sub">At startup, <code class="mono">config.get_replay_buffer()</code> constructs the augmented store. The total replay budget is fixed at <b>2¹⁹ = 524,288 observations</b> for all methods. ARROW changes how this budget is allocated between short-term and long-term storage, and uses matching minibatch sampling weights.</p>
+
+    <div class="ratio-btns" id="ratioBtns">
+      <button data-ratio="25-75">25 / 75 <small>AR75: smaller FIFO, larger LTDM</small></button>
+      <button data-ratio="50-50" class="active">50 / 50 <small>AR50: main paper setting</small></button>
+      <button data-ratio="75-25">75 / 25 <small>AR25: larger FIFO, smaller LTDM</small></button>
+    </div>
+
+    <div class="split-bar" id="splitBar">
+      <div class="seg fifo" id="segFifo">FIFO 50%</div>
+      <div class="seg ltdm" id="segLtdm">LTDM 50%</div>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat"><div class="v fifo" id="stFifoSlots">512</div><div class="k">FIFO slots</div></div>
+      <div class="stat"><div class="v ltdm" id="stLtdmSlots">512</div><div class="k">LTDM slots</div></div>
+      <div class="stat"><div class="v fifo" id="stFifoW">0.50</div><div class="k">FIFO sample weight</div></div>
+      <div class="stat"><div class="v ltdm" id="stLtdmW">0.50</div><div class="k">LTDM sample weight</div></div>
+    </div>
+    <div class="stat-row">
+      <div class="stat"><div class="v" id="stFifoObs">262,144</div><div class="k">FIFO observations</div></div>
+      <div class="stat"><div class="v" id="stLtdmObs">262,144</div><div class="k">LTDM observations</div></div>
+      <div class="stat"><div class="v" id="stTotal">524,288</div><div class="k">Total (= 2¹⁹, fixed)</div></div>
+      <div class="stat"><div class="v" id="stSlotLen">512</div><div class="k">Steps per slot</div></div>
+    </div>
+    <p class="note">In code, <code class="mono">_arrow_fifo_ltdm_capacity_ns()</code> splits <code class="mono">2 × data_n_max = 1024</code> trajectory slots, while <code class="mono">_arrow_fifo_ltdm_sampling_weights()</code> assigns the corresponding read probabilities. DreamerV3 and TES-SAC use the same total capacity as one FIFO buffer.</p>
+  </section>
+
+  <!-- ===================== 5. TRAINING LOOP ===================== -->
+  <section id="s5">
+    <h2><span class="secnum">5</span> One training epoch (<code class="mono">train.py</code>)</h2>
+    <p class="sub">Mirrors the main loop in <code class="mono">train.py</code>: collect, optionally evaluate, train the world model, train the actor-critic, then <code class="mono">envs.step()</code>. Config values: <code class="mono">n_sync=4</code>, <code class="mono">gen_seq_len=4096</code>, <code class="mono">steps_per_batch=1000</code>, and <code class="mono">ac_train_steps=800</code>. Atari uses <code class="mono">env_repeat=4</code>; CoinRun uses <code class="mono">env_repeat=1</code>.</p>
+    <div class="pipe" id="pipe">
+      <div class="node" data-i="0">① Active task</div>
+      <div class="node" data-i="1">② Collect</div>
+      <div class="node" data-i="2">③ replay.add</div>
+      <div class="node" data-i="3">④ Evaluate</div>
+      <div class="node" data-i="4">⑤ Train WM</div>
+      <div class="node" data-i="5">⑥ Train AC</div>
+      <div class="node" data-i="6">⑦ envs.step()</div>
+    </div>
+    <div class="stepbody" id="stepBody"></div>
+    <div class="controls">
+      <button class="btn" id="prevStep">‹ Prev</button>
+      <button class="btn primary" id="nextStep">Next ›</button>
+      <span style="color:var(--muted);font-size:.85rem" id="stepCount"></span>
+    </div>
+  </section>
+
+  <!-- ===================== 6. BUFFER WRITE ===================== -->
+  <section id="s6">
+    <h2><span class="secnum">6</span> Writing experience to both buffers</h2>
+    <p class="sub">After <code class="mono">generate_trajectories</code>, <code class="mono">replay.add()</code> writes each epoch's 32 new 512-step spliced rollouts. The same incoming chunks are offered to both buffers: FIFO always writes them by overwriting the oldest entries, while LTDM accepts entries through reservoir sampling.</p>
+    <div class="sched-btns" id="bufSchedBtns" style="margin-bottom:16px">
+      <button data-bufswap="90" class="active">1 cycle · swap_sched 90
+        <small>each task once · 90 epochs per task · 6 × 90 = 540</small></button>
+      <button data-bufswap="45">2 cycles · swap_sched 45
+        <small>each task twice · 45 epochs per visit · cycle 2 from epoch 270</small></button>
+    </div>
+    <div class="legend">
+      <span><i class="dot new"></i> newly written chunk in the current epoch</span>
+      <span><i class="dot fifo"></i> FIFO slot · number = task 1–6</span>
+      <span><i class="dot ltdm"></i> LTDM slot · number = task 1–6</span>
+      <span>hold <b>Task colors</b> to visualize the per-task composition</span>
+    </div>
+    <div class="buf-wrap">
+      <div class="buf-box">
+        <h4><i class="dot fifo"></i> FIFO buffer <span class="mono" id="fifoCap">(512 slots)</span></h4>
+        <p class="desc">A short-term store with deterministic recency bias: new chunks replace the oldest chunks, concentrating capacity on the current task.</p>
+        <div class="grid" id="fifoGrid"></div>
+        <div class="buf-stack-wrap">
+          <div class="buf-stack-label">Task mix in FIFO right now</div>
+          <div class="buf-stack" id="fifoStackBar"><div class="buf-stack-empty">empty — add an epoch</div></div>
+          <div class="buf-stack-legend" id="fifoStackLegend"></div>
+        </div>
+      </div>
+      <div class="buf-box">
+        <h4><i class="dot ltdm"></i> LTDM buffer <span class="mono" id="ltdmCap">(512 slots)</span></h4>
+        <p class="desc">A long-term distribution-matching store: each chunk receives a random key and replaces the lowest-key slot only if its key is larger.</p>
+        <div class="grid" id="ltdmGrid"></div>
+        <div class="buf-stack-wrap">
+          <div class="buf-stack-label">Task mix in LTDM right now</div>
+          <div class="buf-stack" id="ltdmStackBar"><div class="buf-stack-empty">empty — add an epoch</div></div>
+          <div class="buf-stack-legend" id="ltdmStackLegend"></div>
+        </div>
+      </div>
+    </div>
+    <div class="buf-action-bar">
+      <div class="controls">
+        <button class="btn primary" id="addEpoch">+ Add one epoch (32 chunks) · hold to fast-forward</button>
+        <button class="btn" id="jumpLastEpoch">Jump to last epoch (539)</button>
+        <button class="btn task-color-hold" id="holdTaskColors" type="button" title="Hold to tint grid squares by task color">
+          <span class="task-color-strip" aria-hidden="true">
+            <i style="background:#2E86C1"></i><i style="background:#E74C3C"></i><i style="background:#8E44AD"></i>
+            <i style="background:#27AE60"></i><i style="background:#F39C12"></i><i style="background:#808080"></i>
+          </span>
+          Hold · task colors
+        </button>
+        <button class="btn ghost" id="resetBuf">Reset buffers</button>
+        <span class="mono" id="bufEpochLabel" style="font-weight:700;color:var(--ink)">Epoch 0 / 539</span>
+      </div>
+      <p class="mono buf-status-line" id="bufStatus"></p>
+    </div>
+    <div class="ltdm-plot-box">
+      <h4>Task experience distribution — slots per task (1–6)</h4>
+      <p class="plot-sub">Column height is the number of buffer slots from each task. FIFO concentrates on recent tasks; LTDM approaches a broader sample of the historical stream as the curriculum progresses.</p>
+      <svg id="bufTaskPlot" viewBox="0 0 680 300" role="img" aria-label="Column chart of slots per task with bell curve overlay for FIFO and LTDM"></svg>
+      <div class="ltdm-plot-legend" id="bufTaskLegend"></div>
+    </div>
+    <p class="note">The grids are scaled for display (512 real slots become 256 cells at 50/50). All 32 chunks are offered to both buffers: fewer LTDM highlights simply mean fewer reservoir replacements in that epoch.</p>
+  </section>
+
+  <!-- ===================== 7. MINIBATCH SAMPLER ===================== -->
+  <section id="s7">
+    <h2><span class="secnum">7</span> Sampling a minibatch — one buffer per update</h2>
+    <p class="sub">Each world-model gradient update calls <code class="mono">replay.minibatch()</code>. ARROW first selects one replay buffer according to the configured weights, then samples a uniform minibatch from that buffer.</p>
+
+    <div class="controls" style="margin:14px 0 16px">
+      <button class="btn primary" id="mbNextBtn">Next step →</button>
+      <button class="btn ghost" id="mbResetBtn">↺ Reset walkthrough</button>
+    </div>
+
+    <div class="mb-walkthrough">
+      <div class="mb-stage-header">
+        <div class="mb-dots">
+          <div class="mb-dot" id="mbDot1">1</div>
+          <div class="mb-dot" id="mbDot2">2</div>
+          <div class="mb-dot" id="mbDot3">3</div>
+        </div>
+        <span class="mb-stage-label" id="mbStageLabel">Press "Next step →" to begin</span>
+      </div>
+      <div class="mb-stage-body" id="mbStageBody">
+        <div class="mb-idle-hint">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 8 16 12 12 16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+          <span>Three stages define one replay minibatch.</span>
+        </div>
+      </div>
+    </div>
+
+    <hr style="border:none;border-top:1px solid var(--line);margin:24px 0">
+
+    <p style="font-weight:700;margin:0 0 6px">Repeated draws approximate the configured sampling weights</p>
+    <p style="color:var(--muted);font-size:.9rem;margin:0 0 14px">The buffer choice is stochastic at each update, but the empirical draw frequencies converge toward the ratio selected in section 4.</p>
+    <div class="controls">
+      <button class="btn primary" id="sample1">Sample 1</button>
+      <button class="btn" id="sample50">Sample 50×</button>
+      <button class="btn ghost" id="resetTally">Reset tally</button>
+    </div>
+    <div class="coin" id="coinOut">—</div>
+    <div class="tally">
+      <div class="t fifo"><div class="big" id="tFifo">0</div><div style="color:var(--muted);font-weight:600">FIFO draws</div>
+        <div class="barline"><i id="tFifoBar" style="width:0%;background:var(--fifo)"></i></div></div>
+      <div class="t ltdm"><div class="big" id="tLtdm">0</div><div style="color:var(--muted);font-weight:600">LTDM draws</div>
+        <div class="barline"><i id="tLtdmBar" style="width:0%;background:var(--ltdm)"></i></div></div>
+    </div>
+    <p class="note">Within the selected buffer, sampling is uniform. This is not Prioritized Experience Replay: LTDM's random key determines retention, not training priority.</p>
+  </section>
+
+  <!-- ===================== 7. MINIBATCH SAMPLER ===================== -->
+  <!-- ===================== 8. WHY IT WORKS ===================== -->
+  <section id="s8">
+    <h2><span class="secnum">8</span> Why this reduces forgetting</h2>
+    <div class="grid2">
+      <div class="card">
+        <h3>The recency problem</h3>
+        <p>A single FIFO buffer eventually becomes dominated by the current task. The world model is then optimized mainly on recent observations, so its latent dynamics for older tasks degrade, and the actor trains inside an imagined environment that no longer represents the full curriculum.</p>
+      </div>
+      <div class="card">
+        <h3>ARROW's mechanism</h3>
+        <p>The LTDM buffer retains a distribution-matched sample of previous experience under the same total budget. World-model updates therefore continue to include older tasks, stabilizing the latent simulator that the actor-critic uses for imagined training.</p>
+      </div>
+    </div>
+    <p class="note">The ratio ablation traces a stability-plasticity axis. On Atari, allocating more capacity to LTDM generally reduces forgetting but weakens forward transfer; on CoinRun, where tasks share structure, differences between ratios are often within seed variability. AR50 is therefore a robust default, not a tuned optimum.</p>
+  </section>
+
+  <!-- ===================== GLOSSARY ===================== -->
+  <section id="gloss">
+    <h2><span class="secnum">✦</span> Glossary</h2>
+    <table class="gloss">
+      <tr><td>ARROW</td><td>Augmented Replay for RObust World models: DreamerV3 with a dual-buffer replay distribution for continual RL.</td></tr>
+      <tr><td>World model</td><td>Learned latent dynamics model predicting images, rewards, and continuation signals from RSSM states.</td></tr>
+      <tr><td>Internal state (z, h)</td><td>Concatenation of stochastic latent state z and deterministic GRU state h; the actor acts from this representation.</td></tr>
+      <tr><td>Spliced rollout</td><td>Fixed 512-step stored sequence; short episode fragments are concatenated with reset flags.</td></tr>
+      <tr><td>FIFO buffer</td><td>Short-term replay store that keeps the most recent trajectory chunks and evicts the oldest.</td></tr>
+      <tr><td>LTDM buffer</td><td>Long-term global distribution-matching replay store implemented as a random-key reservoir.</td></tr>
+      <tr><td>Minibatch</td><td>Sixteen chunks by 32 timesteps used for one world-model gradient update.</td></tr>
+      <tr><td>Reservoir key</td><td>Random priority determining whether LTDM retains an incoming chunk; it is not reward, surprise, or TD-error-based.</td></tr>
+      <tr><td>No task IDs</td><td>The learner receives observations, actions, rewards, continuations, and resets, but no explicit task label.</td></tr>
+      <tr><td>Forgetting</td><td>Drop in normalized performance after leaving a task; lower is better and negative values indicate backward transfer.</td></tr>
+      <tr><td>Forward transfer</td><td>Learning-speed comparison between continual and single-task training; near-zero is desirable when tasks are unrelated.</td></tr>
+      <tr><td>WC-ACC</td><td>Worst-case accuracy metric balancing current-task plasticity against retained minimum performance on earlier tasks.</td></tr>
+      <tr><td>Max-F / Recovery</td><td>Two-cycle metrics measuring degradation before revisiting a task and performance regained after the second exposure.</td></tr>
+      <tr><td>swap_sched</td><td>Epochs per task visit: 90 for one-cycle curricula, 45 for two-cycle curricula.</td></tr>
+      <tr><td>Shared structure</td><td>Atari comprises unrelated games; CoinRun comprises related Procgen variants where representation reuse is possible.</td></tr>
+    </table>
+  </section>
+
+  <div class="footer">
+    Built from the ARROW manuscript, <code class="mono">Code/ARROW_and_DV3/</code>, and the Atari/CoinRun configuration files. Interactive values reflect the reported training protocol unless noted.
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ---------- shared config (from Atari arrow config) ---------- */
+const TOTAL_SLOTS = 1024;        // 2 * data_n_max
+const SLOT_LEN = 512;            // data_t (steps per chunk)
+const CHUNKS_PER_EPOCH = 32;     // data_n
+const N_SYNC = 4, GEN_SEQ_LEN = 4096, ENV_REPEAT = 4;
+const STEPS_PER_BATCH = 1000, AC_TRAIN_STEPS = 800, AC_TRAIN_SYNC = 128, DREAM_STEPS = 16;
+const MB_N = 16, MB_T = 32;
+const TOTAL_EPOCHS = 540;
+/* Same palette as plots copy.ipynb — energetic_palette */
+const ENERGETIC_PALETTE = [
+  "#2E86C1",  // electric_blue
+  "#E74C3C",  // coral_red
+  "#8E44AD",  // royal_purple
+  "#27AE60",  // emerald_green
+  "#F39C12",  // sunset_orange
+  "#808080",  // cool gray
+];
+const SUITES = {
+  atari: {
+    label: "game",
+    games: [
+      {n:"Ms. Pac-Man", info:"reward ×0.05"},
+      {n:"Boxing", info:"reward ×1"},
+      {n:"Crazy Climber", info:"reward ×0.001"},
+      {n:"Frostbite", info:"reward ×0.2"},
+      {n:"Seaquest", info:"reward ×0.5"},
+      {n:"Enduro", info:"reward ×0.5"},
+    ],
+    desc: g => `active game <b>${g.n}</b> (${g.info})`,
+  },
+  coinrun: {
+    label: "variant",
+    games: [
+      {n:"CoinRun", info:"", d:"regularly rendered game"},
+      {n:"+NB", info:"", d:"removes decorative backgrounds (use_backgrounds=False)"},
+      {n:"+NB+RT", info:"", d:"restricts the set of level themes (restrict_themes=True)"},
+      {n:"+NB+RT+GA", info:"", d:"procedurally generated assets (use_generated_assets=True)"},
+      {n:"+NB+RT+GA+MA", info:"", d:"monochrome assets (use_monochrome_assets=True)"},
+      {n:"+NB+RT+GA+MA+CA", info:"", d:"camera does not remain centered on the agent (center_agent=False)"},
+    ],
+    desc: g => `active variant <b>${g.n}</b>`,
+  },
+};
+Object.values(SUITES).forEach(su => {
+  su.games.forEach((g, i) => { g.c = ENERGETIC_PALETTE[i % ENERGETIC_PALETTE.length]; });
+});
+let suite = "atari";
+function GAMES(){ return SUITES[suite].games; }
+const RATIOS = {
+  "50-50": {fifo:512, ltdm:512, wf:0.50, wl:0.50},
+  "25-75": {fifo:256, ltdm:768, wf:0.25, wl:0.75},
+  "75-25": {fifo:768, ltdm:256, wf:0.75, wl:0.25},
+};
+let ratio = "50-50";
+let swap = 90;                   // 90 = one-cycle, 45 = two-cycle
+const fmt = n => n.toLocaleString("en-US");
+
+/* ---------- section 3: ratio control ---------- */
+function applyRatio(){
+  const r = RATIOS[ratio];
+  const fPct = Math.round(r.fifo/TOTAL_SLOTS*100);
+  const lPct = 100 - fPct;
+  segFifo.style.flexBasis = fPct + "%";
+  segLtdm.style.flexBasis = lPct + "%";
+  segFifo.textContent = "FIFO " + fPct + "%";
+  segLtdm.textContent = "LTDM " + lPct + "%";
+  stFifoSlots.textContent = fmt(r.fifo);
+  stLtdmSlots.textContent = fmt(r.ltdm);
+  stFifoW.textContent = r.wf.toFixed(2);
+  stLtdmW.textContent = r.wl.toFixed(2);
+  stFifoObs.textContent = fmt(r.fifo*SLOT_LEN);
+  stLtdmObs.textContent = fmt(r.ltdm*SLOT_LEN);
+  stTotal.textContent = fmt(TOTAL_SLOTS*SLOT_LEN);
+  stSlotLen.textContent = SLOT_LEN;
+  fifoCap.textContent = "("+fmt(r.fifo)+" slots)";
+  ltdmCap.textContent = "("+fmt(r.ltdm)+" slots)";
+  resetBuffers();
+  resetTally();
+}
+document.querySelectorAll("#ratioBtns button").forEach(b=>{
+  b.addEventListener("click",()=>{
+    document.querySelectorAll("#ratioBtns button").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active");
+    ratio = b.dataset.ratio;
+    applyRatio();
+  });
+});
+
+/* ---------- section 4: buffer write sim (scaled grids; ratio-aware slot counts) ---------- */
+const GRID_SCALE = 2;  // 512 real slots → 256 display cells
+const BUF_EPOCH_MAX = 539;
+const fifoGrid = document.getElementById("fifoGrid");
+const ltdmGrid = document.getElementById("ltdmGrid");
+const addEpochBtn = document.getElementById("addEpoch");
+const jumpLastEpochBtn = document.getElementById("jumpLastEpoch");
+const holdTaskColorsBtn = document.getElementById("holdTaskColors");
+const bufEpochLabel = document.getElementById("bufEpochLabel");
+let fifoGridCells = 256, ltdmGridCells = 256;
+let fifoTaskNums, ltdmTaskNums, fifoPtr, nextBufEpoch = 0;
+let bufSwap = 90, ltdmKeys;
+let bufHoldTimer = null, bufHoldInterval = null;
+let taskColorHeld = false;
+let lastNewFifo = new Set(), lastNewLtdm = new Set();
+
+function countTaskSlots(arr){
+  const c = [0, 0, 0, 0, 0, 0];
+  for(const t of arr){ if(t >= 1 && t <= 6) c[t - 1]++; }
+  return c;
+}
+
+function renderBufferStack(containerId, legendId, counts, total){
+  const el = document.getElementById(containerId);
+  const leg = document.getElementById(legendId);
+  if(!el) return;
+  if(!total){
+    el.innerHTML = '<div class="buf-stack-empty">empty — add an epoch</div>';
+    if(leg) leg.innerHTML = "";
+    return;
+  }
+  let inner = '<div class="buf-stack-inner">';
+  for(let t = 0; t < 6; t++){
+    if(!counts[t]) continue;
+    const pct = 100 * counts[t] / total;
+    const col = ENERGETIC_PALETTE[t];
+    const label = pct >= 7 ? String(counts[t]) : "";
+    inner += `<div class="buf-stack-seg" style="width:${pct.toFixed(2)}%;background:${col}" title="Task ${t + 1}: ${counts[t]} slots (${Math.round(pct)}%)">${label}</div>`;
+  }
+  inner += "</div>";
+  el.innerHTML = inner;
+  if(leg){
+    leg.innerHTML = counts.map((c, i) =>
+      c ? `<span><i style="background:${ENERGETIC_PALETTE[i]}"></i>Task ${i + 1}: <b>${c}</b></span>` : ""
+    ).filter(Boolean).join("");
+  }
+}
+
+function bellCurvePath(counts, xScale, yScale){
+  const total = counts.reduce((a, b) => a + b, 0);
+  if(!total) return "";
+  let mu = 0;
+  for(let i = 0; i < 6; i++) mu += (i + 1) * counts[i];
+  mu /= total;
+  let varSum = 0;
+  for(let i = 0; i < 6; i++) varSum += counts[i] * Math.pow((i + 1) - mu, 2);
+  let sigma = Math.sqrt(varSum / total);
+  if(!isFinite(sigma) || sigma < 0.35) sigma = 0.35;
+  const peak = Math.max(...counts, 1);
+  let d = "";
+  for(let xi = 0.75; xi <= 6.25; xi += 0.06){
+    const y = peak * Math.exp(-0.5 * Math.pow((xi - mu) / sigma, 2));
+    const px = xScale(xi), py = yScale(y);
+    d += (d ? "L" : "M") + px.toFixed(1) + "," + py.toFixed(1);
+  }
+  return d;
+}
+
+function drawColumnPanel(parts, ox, oy, pw, ph, counts, title, curveColor){
+  const pad = {l: 38, r: 10, t: 28, b: 40};
+  const chartW = pw - pad.l - pad.r;
+  const chartH = ph - pad.t - pad.b;
+  const maxY = Math.max(1, ...counts, Math.ceil(ltdmGridCells / 6));
+  const xScale = t => ox + pad.l + (t - 0.5) * (chartW / 6);
+  const yScale = v => oy + pad.t + chartH * (1 - v / maxY);
+  const barW = chartW / 6 * 0.52;
+  const baseY = oy + pad.t + chartH;
+
+  parts.push(`<rect x="${ox}" y="${oy}" width="${pw}" height="${ph}" fill="#fff" rx="8" stroke="#dde3ef"/>`);
+  parts.push(`<text x="${(ox + pw / 2).toFixed(1)}" y="${(oy + 16).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="800" fill="${curveColor}">${title}</text>`);
+
+  /* y-axis ticks */
+  const tickStep = maxY <= 10 ? 2 : maxY <= 40 ? 10 : maxY <= 100 ? 20 : 50;
+  for(let v = 0; v <= maxY; v += tickStep){
+    const ty = yScale(v);
+    parts.push(`<line x1="${ox + pad.l}" y1="${ty.toFixed(1)}" x2="${ox + pad.l + chartW}" y2="${ty.toFixed(1)}" stroke="#eef1f8" stroke-width="1"/>`);
+    if(v > 0){
+      parts.push(`<text x="${(ox + pad.l - 6).toFixed(1)}" y="${(ty + 3).toFixed(1)}" text-anchor="end" font-size="9" fill="#9aa6c8">${v}</text>`);
+    }
+  }
+
+  parts.push(`<line x1="${ox + pad.l}" y1="${baseY.toFixed(1)}" x2="${(ox + pad.l + chartW).toFixed(1)}" y2="${baseY.toFixed(1)}" stroke="#dde3ef"/>`);
+  parts.push(`<text x="${(ox + 12).toFixed(1)}" y="${(oy + pad.t + chartH / 2).toFixed(1)}" text-anchor="middle" font-size="9" fill="#9aa6c8" transform="rotate(-90 ${ox + 12} ${oy + pad.t + chartH / 2})">slots</text>`);
+
+  /* columns */
+  for(let t = 0; t < 6; t++){
+    const cx = xScale(t + 1);
+    const count = counts[t];
+    const h = count / maxY * chartH;
+    const col = ENERGETIC_PALETTE[t];
+    parts.push(`<rect x="${(cx - barW / 2).toFixed(1)}" y="${(baseY - h).toFixed(1)}" width="${barW.toFixed(1)}" height="${Math.max(h, count ? 2 : 0).toFixed(1)}" fill="${col}" opacity="0.85" rx="3"/>`);
+    if(count){
+      parts.push(`<text x="${cx.toFixed(1)}" y="${(baseY - h - 5).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="800" fill="${col}">${count}</text>`);
+    }
+    parts.push(`<text x="${cx.toFixed(1)}" y="${(baseY + 14).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="600" fill="#5a6781">${t + 1}</text>`);
+  }
+
+  parts.push(`<text x="${(ox + pad.l + chartW / 2).toFixed(1)}" y="${(oy + ph - 6).toFixed(1)}" text-anchor="middle" font-size="9" fill="#9aa6c8">task number</text>`);
+
+  const curve = bellCurvePath(counts, xScale, yScale);
+  if(curve){
+    parts.push(`<path d="${curve}" fill="none" stroke="${curveColor}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>`);
+  }
+}
+
+function drawBufferTaskPlot(){
+  const svg = document.getElementById("bufTaskPlot");
+  const legend = document.getElementById("bufTaskLegend");
+  if(!svg) return;
+
+  const fifoCounts = countTaskSlots(fifoTaskNums);
+  const ltdmCounts = countTaskSlots(ltdmTaskNums);
+  const fifoTotal = fifoCounts.reduce((a, b) => a + b, 0);
+  const ltdmTotal = ltdmCounts.reduce((a, b) => a + b, 0);
+  const activeTask = nextBufEpoch > 0 ? taskForEpoch(nextBufEpoch - 1) : 1;
+
+  renderBufferStack("fifoStackBar", "fifoStackLegend", fifoCounts, fifoTotal);
+  renderBufferStack("ltdmStackBar", "ltdmStackLegend", ltdmCounts, ltdmTotal);
+
+  const W = 680, H = 300;
+  let parts = [`<rect x="0" y="0" width="${W}" height="${H}" fill="#f6f8fc" rx="8"/>`];
+
+  drawColumnPanel(parts, 8, 8, 328, 284, fifoCounts, "FIFO", "#7082B8");
+  drawColumnPanel(parts, 344, 8, 328, 284, ltdmCounts, "LTDM", "#d97706");
+
+  if(legend){
+    legend.innerHTML = ENERGETIC_PALETTE.map((col, i) => {
+      const n = i + 1;
+      const hi = n === activeTask ? ` · <b style="color:${col}">current</b>` : "";
+      return `<span><i style="background:${col}"></i>Task ${n}${hi}</span>`;
+    }).join("") + `<span><i style="background:#7082B8;border-radius:999px;width:14px;height:3px"></i>FIFO curve</span><span><i style="background:#d97706;border-radius:999px;width:14px;height:3px"></i>LTDM curve</span>`;
+  }
+
+  svg.innerHTML = parts.join("");
+}
+
+function gridCellsForSlots(slots){ return Math.max(64, Math.round(slots / GRID_SCALE)); }
+function taskForEpoch(epoch){ return Math.floor(epoch / bufSwap) % 6 + 1; }
+
+function paintCell(cell, kind, taskNum, flashNew){
+  cell.classList.remove("new","fill-fifo","fill-ltdm","evict");
+  cell.style.background = "";
+  cell.style.borderColor = "";
+  cell.style.color = "";
+  if(kind === "fifo") cell.classList.add("fill-fifo");
+  else if(kind === "ltdm") cell.classList.add("fill-ltdm");
+  if(flashNew) cell.classList.add("new");
+  cell.textContent = taskNum > 0 ? String(taskNum) : "";
+}
+
+function paintCellAsTask(cell, taskNum){
+  cell.classList.remove("new","fill-fifo","fill-ltdm","evict");
+  if(taskNum >= 1 && taskNum <= 6){
+    const col = ENERGETIC_PALETTE[taskNum - 1];
+    cell.style.background = col;
+    cell.style.borderColor = col;
+    cell.style.color = "#fff";
+  } else {
+    cell.style.background = "";
+    cell.style.borderColor = "";
+    cell.style.color = "";
+  }
+  cell.textContent = taskNum > 0 ? String(taskNum) : "";
+}
+
+function showTaskColorsOnGrid(){
+  if(!buffersAreFull()) return;
+  taskColorHeld = true;
+  if(holdTaskColorsBtn) holdTaskColorsBtn.classList.add("active");
+  const fc = fifoGrid.children, lc = ltdmGrid.children;
+  for(let i = 0; i < fifoGridCells; i++) paintCellAsTask(fc[i], fifoTaskNums[i]);
+  for(let i = 0; i < ltdmGridCells; i++) paintCellAsTask(lc[i], ltdmTaskNums[i]);
+}
+
+function restoreGridColors(){
+  if(!taskColorHeld) return;
+  taskColorHeld = false;
+  if(holdTaskColorsBtn) holdTaskColorsBtn.classList.remove("active");
+  const fc = fifoGrid.children, lc = ltdmGrid.children;
+  for(let i = 0; i < fifoGridCells; i++){
+    paintCell(fc[i], "fifo", fifoTaskNums[i], lastNewFifo.has(i));
+  }
+  for(let i = 0; i < ltdmGridCells; i++){
+    paintCell(lc[i], "ltdm", ltdmTaskNums[i], lastNewLtdm.has(i));
+  }
+}
+
+function repaintGridFromState(){
+  const fc = fifoGrid.children, lc = ltdmGrid.children;
+  if(taskColorHeld){
+    for(let i = 0; i < fifoGridCells; i++) paintCellAsTask(fc[i], fifoTaskNums[i]);
+    for(let i = 0; i < ltdmGridCells; i++) paintCellAsTask(lc[i], ltdmTaskNums[i]);
+    return;
+  }
+  for(let i = 0; i < fifoGridCells; i++){
+    paintCell(fc[i], "fifo", fifoTaskNums[i], false);
+  }
+  for(let i = 0; i < ltdmGridCells; i++){
+    paintCell(lc[i], "ltdm", ltdmTaskNums[i], false);
+  }
+}
+
+function buffersAreFull(){
+  if(!fifoTaskNums?.length || !ltdmTaskNums?.length) return false;
+  return fifoTaskNums.every(t => t > 0) && ltdmTaskNums.every(t => t > 0);
+}
+
+function updateBufEpochUI(){
+  const shown = Math.min(nextBufEpoch, BUF_EPOCH_MAX);
+  bufEpochLabel.textContent = `Epoch ${shown} / ${BUF_EPOCH_MAX}`;
+  const atEnd = nextBufEpoch > BUF_EPOCH_MAX;
+  addEpochBtn.disabled = atEnd;
+  if(jumpLastEpochBtn) jumpLastEpochBtn.disabled = atEnd;
+  if(holdTaskColorsBtn){
+    const full = buffersAreFull();
+    holdTaskColorsBtn.disabled = !full;
+    holdTaskColorsBtn.title = full
+      ? "Hold to tint grid squares by task color"
+      : "Available when every FIFO and LTDM slot is filled";
+  }
+}
+
+function stopBufHold(){
+  clearTimeout(bufHoldTimer);
+  clearInterval(bufHoldInterval);
+  bufHoldTimer = bufHoldInterval = null;
+}
+
+function jumpToLastEpoch(){
+  stopBufHold();
+  restoreGridColors();
+  if(nextBufEpoch > BUF_EPOCH_MAX) return;
+  while(nextBufEpoch <= BUF_EPOCH_MAX) addEpochData(true);
+  lastNewFifo.clear();
+  lastNewLtdm.clear();
+  repaintGridFromState();
+  const taskNum = taskForEpoch(BUF_EPOCH_MAX);
+  const lfill = ltdmTaskNums.filter(t => t > 0).length;
+  bufStatus.innerHTML =
+    `Jumped to epoch ${BUF_EPOCH_MAX} · active task <b>${taskNum}</b> · ` +
+    `buffers filled through full curriculum · LTDM ${Math.round(lfill / ltdmGridCells * 100)}% full`;
+  updateBufEpochUI();
+  drawBufferTaskPlot();
+}
+
+function startBufHold(e){
+  if(e.type === "mousedown") e.preventDefault();
+  if(addEpochBtn.disabled) return;
+  addEpochData();
+  if(addEpochBtn.disabled) return;
+  bufHoldTimer = setTimeout(()=>{
+    bufHoldInterval = setInterval(()=>{
+      if(addEpochBtn.disabled){ stopBufHold(); return; }
+      addEpochData();
+    }, 45);
+  }, 320);
+}
+
+function buildGrid(el, n){
+  el.style.gridTemplateColumns = `repeat(${Math.min(16, n <= 64 ? 16 : n <= 128 ? 16 : 24)}, 1fr)`;
+  el.innerHTML="";
+  for(let i=0;i<n;i++){
+    const c=document.createElement("div");
+    c.className="cell"; el.appendChild(c);
+  }
+}
+function resetBuffers(){
+  restoreGridColors();
+  const r = RATIOS[ratio];
+  fifoGridCells = gridCellsForSlots(r.fifo);
+  ltdmGridCells = gridCellsForSlots(r.ltdm);
+  buildGrid(fifoGrid, fifoGridCells);
+  buildGrid(ltdmGrid, ltdmGridCells);
+  fifoTaskNums = new Array(fifoGridCells).fill(0);
+  ltdmTaskNums = new Array(ltdmGridCells).fill(0);
+  fifoPtr = 0;
+  nextBufEpoch = 0;
+  ltdmKeys = new Array(ltdmGridCells).fill(-Infinity);
+  lastNewFifo.clear();
+  lastNewLtdm.clear();
+  bufStatus.textContent = "";
+  updateBufEpochUI();
+  drawBufferTaskPlot();
+}
+function addEpochData(silent = false){
+  if(nextBufEpoch > BUF_EPOCH_MAX) return;
+  const fc = fifoGrid.children, lc = ltdmGrid.children;
+  if(!silent){
+    lastNewFifo.clear();
+    lastNewLtdm.clear();
+    for(const c of fc){ c.classList.remove("new"); }
+    for(const c of lc){ c.classList.remove("new"); }
+  }
+  const taskNum = taskForEpoch(nextBufEpoch);
+  let ltdmAccept=0, ltdmReject=0;
+  for(let j=0;j<CHUNKS_PER_EPOCH;j++){
+    const idx = fifoPtr % fifoGridCells;
+    fifoTaskNums[idx] = taskNum;
+    if(!silent){
+      if(!taskColorHeld) paintCell(fc[idx], "fifo", taskNum, true);
+      lastNewFifo.add(idx);
+    }
+    fifoPtr++;
+    const key = randn();
+    let minIdx=0, minKey=Infinity;
+    for(let i=0;i<ltdmGridCells;i++){ if(ltdmKeys[i]<minKey){minKey=ltdmKeys[i];minIdx=i;} }
+    if(key>minKey){
+      ltdmKeys[minIdx]=key;
+      ltdmTaskNums[minIdx]=taskNum;
+      if(!silent){
+        if(!taskColorHeld) paintCell(lc[minIdx], "ltdm", taskNum, true);
+        lastNewLtdm.add(minIdx);
+      }
+      ltdmAccept++;
+    } else { ltdmReject++; }
+  }
+  const ep = nextBufEpoch;
+  nextBufEpoch++;
+  if(silent) return;
+  if(taskColorHeld) showTaskColorsOnGrid();
+  const lfill = ltdmTaskNums.filter(t=>t>0).length;
+  bufStatus.innerHTML =
+    `Epoch ${ep+1} added · task being trained on: <b>${taskNum}</b><br>` +
+    `<b>All ${CHUNKS_PER_EPOCH} chunks</b> to <b>both</b> buffers<br>` +
+    `FIFO: all stored<br>` +
+    `LTDM: ${ltdmAccept} wins (in green), ${ltdmReject} bounced (${Math.round(lfill/ltdmGridCells*100)}% full)`;
+  updateBufEpochUI();
+  drawBufferTaskPlot();
+}
+function randn(){ // Box–Muller
+  let u=0,v=0; while(u===0)u=Math.random(); while(v===0)v=Math.random();
+  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+}
+addEpochBtn.addEventListener("mousedown", startBufHold);
+addEpochBtn.addEventListener("mouseup", stopBufHold);
+addEpochBtn.addEventListener("mouseleave", stopBufHold);
+addEpochBtn.addEventListener("touchstart", startBufHold, {passive:false});
+addEpochBtn.addEventListener("touchend", stopBufHold);
+addEpochBtn.addEventListener("touchcancel", stopBufHold);
+jumpLastEpochBtn.addEventListener("click", jumpToLastEpoch);
+function startTaskColorHold(e){
+  if(holdTaskColorsBtn?.disabled) return;
+  if(e.type === "mousedown" || e.type === "touchstart") e.preventDefault();
+  showTaskColorsOnGrid();
+}
+function stopTaskColorHold(){
+  restoreGridColors();
+}
+holdTaskColorsBtn.addEventListener("mousedown", startTaskColorHold);
+holdTaskColorsBtn.addEventListener("mouseup", stopTaskColorHold);
+holdTaskColorsBtn.addEventListener("mouseleave", stopTaskColorHold);
+holdTaskColorsBtn.addEventListener("touchstart", startTaskColorHold, {passive:false});
+holdTaskColorsBtn.addEventListener("touchend", stopTaskColorHold);
+holdTaskColorsBtn.addEventListener("touchcancel", stopTaskColorHold);
+document.getElementById("resetBuf").addEventListener("click",()=>{ stopBufHold(); resetBuffers(); });
+document.querySelectorAll("#bufSchedBtns button").forEach(b=>{
+  b.addEventListener("click",()=>{
+    document.querySelectorAll("#bufSchedBtns button").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active");
+    bufSwap = +b.dataset.bufswap;
+    resetBuffers();
+  });
+});
+
+/* ---------- section 5: minibatch 3-step walkthrough + tally ---------- */
+const coinOut   = document.getElementById("coinOut");
+const tFifo     = document.getElementById("tFifo");
+const tLtdm     = document.getElementById("tLtdm");
+const tFifoBar  = document.getElementById("tFifoBar");
+const tLtdmBar  = document.getElementById("tLtdmBar");
+const mbStageBody  = document.getElementById("mbStageBody");
+const mbStageLabel = document.getElementById("mbStageLabel");
+const mbDots    = [document.getElementById("mbDot1"), document.getElementById("mbDot2"), document.getElementById("mbDot3")];
+const mbNextBtn = document.getElementById("mbNextBtn");
+const mbResetBtn= document.getElementById("mbResetBtn");
+
+let mbStage = 0;         // 0=idle, 1, 2, 3, 4=done
+let mbLastPick = null;   // "FIFO" | "LTDM"
+let mbLastPicks = [];    // [{slot, tStart}, ...]
+
+function mbSetDots(active){
+  mbDots.forEach((d, i) => {
+    d.classList.remove("active","done");
+    if(i + 1 < active) d.classList.add("done");
+    else if(i + 1 === active) d.classList.add("active");
+  });
+}
+
+function mbStage1(){
+  const r = RATIOS[ratio];
+  const pick = Math.random() < r.wf ? "FIFO" : "LTDM";
+  mbLastPick = pick;
+  const isFifo = pick === "FIFO";
+  const wWin  = (isFifo ? r.wf : r.wl) * 100;
+  const wLose = (isFifo ? r.wl : r.wf) * 100;
+  mbStageLabel.textContent = "Step 1 of 3 — Draw one replay buffer using configured weights";
+  mbSetDots(1);
+  mbStageBody.innerHTML = `
+    <p style="color:var(--muted);font-size:.9rem;margin:0 0 16px">
+      A single weighted random draw selects the replay buffer for this world-model update.
+    </p>
+    <div class="mb-buffers">
+      <div class="mb-buf-card ${isFifo ? "winner fifo" : "loser"}">
+        <div class="bname" style="color:var(--fifo)">FIFO</div>
+        <div class="bweight">weight ${r.wf.toFixed(2)} (${Math.round(r.wf*100)}%)</div>
+        ${isFifo ? '<div class="mb-win-badge">✓ Selected</div>' : ''}
+      </div>
+      <div class="mb-buf-card ${!isFifo ? "winner ltdm" : "loser"}">
+        <div class="bname" style="color:var(--ltdm)">LTDM</div>
+        <div class="bweight">weight ${r.wl.toFixed(2)} (${Math.round(r.wl*100)}%)</div>
+        ${!isFifo ? '<div class="mb-win-badge">✓ Selected</div>' : ''}
+      </div>
+    </div>
+    <p style="font-size:.82rem;color:var(--muted);margin:14px 0 0">
+      Code: <code class="mono">random.choices([fifo, ltdm], weights=[${r.wf}, ${r.wl}], k=1)[0]</code>
+    </p>`;
+}
+
+function mbStage2(){
+  const r = RATIOS[ratio];
+  const nValid = mbLastPick === "FIFO" ? r.fifo : r.ltdm;
+  const col = mbLastPick === "FIFO" ? "fifo" : "ltdm";
+  const picks = [];
+  for(let i = 0; i < MB_N; i++)
+    picks.push(Math.floor(Math.random() * nValid));
+  mbLastPicks = picks.map(slot => ({ slot, tStart: Math.floor(Math.random()*(SLOT_LEN-MB_T+1)) }));
+  const pickedSet = new Set(picks);
+  mbStageLabel.textContent = "Step 2 of 3 — Sample 16 trajectory chunks uniformly";
+  mbSetDots(2);
+  let slots = "";
+  const show = Math.min(nValid, 256);
+  for(let i = 0; i < show; i++){
+    slots += `<div class="mb-slot${pickedSet.has(i) ? ` picked ${col}` : ""}"></div>`;
+  }
+  const extraLabel = nValid > 256 ? `<p class="mb-slot-caption">Showing first 256 of ${nValid} slots. ${MB_N} highlighted = selected for this batch.</p>` : `<p class="mb-slot-caption">${nValid} total slots in <span style="font-weight:700;color:var(--${col})">${mbLastPick}</span>. ${MB_N} highlighted = selected for this batch.</p>`;
+  mbStageBody.innerHTML = `
+    <div class="mb-slot-section">
+      <p class="mb-slot-label">Each square represents one stored 512-step chunk. <b>${MB_N} chunks are sampled uniformly</b>, without priority weights.</p>
+      <div class="mb-slot-grid">${slots}</div>
+      ${extraLabel}
+    </div>`;
+}
+
+function mbStage3(){
+  const col = mbLastPick === "FIFO" ? "fifo" : "ltdm";
+  mbStageLabel.textContent = "Step 3 of 3 — Extract a random 32-step window from each chunk";
+  mbSetDots(3);
+  let rows = "";
+  mbLastPicks.forEach((pk, i) => {
+    const leftPct  = (pk.tStart / SLOT_LEN * 100).toFixed(1);
+    const widthPct = (MB_T / SLOT_LEN * 100).toFixed(1);
+    rows += `<div class="mb-crow">
+      <span class="cnum">${i+1}</span>
+      <div class="mb-cbar"><div class="mb-cwin ${col}" style="left:${leftPct}%;width:${widthPct}%"></div></div>
+      <span class="mb-crange">${pk.tStart}–${pk.tStart+MB_T-1}</span>
+    </div>`;
+  });
+  mbStageBody.innerHTML = `
+    <div class="mb-window-section">
+      <p class="mb-window-label">
+        Each 512-step chunk is <b>not used in full</b>. The code picks a random start position and takes <code class="mono">mb_t_size = 32</code> consecutive timesteps.
+        Each bar below is one selected chunk; the <span style="color:var(--${col});font-weight:700">${mbLastPick} segment</span> is the window used for this update.
+      </p>
+      <div class="mb-chunk-rows">${rows}</div>
+      <div style="margin-top:16px;padding:12px 16px;border-radius:10px;background:var(--accent-soft);border:1px solid #d4c8f5;font-weight:700;font-size:.9rem">
+        Result: ${MB_N} chunks × ${MB_T} steps = <b>${MB_N*MB_T} frames</b> → one call to <code class="mono">wm.compute_loss()</code> + backprop
+      </div>
+    </div>`;
+  mbNextBtn.textContent = "↺ Sample another";
+}
+
+function mbResetWalkthrough(){
+  mbStage = 0;
+  mbLastPick = null; mbLastPicks = [];
+  mbSetDots(0);
+  mbStageLabel.textContent = 'Press "Next step →" to begin';
+  mbNextBtn.textContent = "Next step →";
+  mbStageBody.innerHTML = `<div class="mb-idle-hint">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 8 16 12 12 16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+    <span>Three stages define one replay minibatch.</span>
+  </div>`;
+}
+
+mbNextBtn.addEventListener("click", () => {
+  mbStage++;
+  if(mbStage === 1){ mbStage1(); }
+  else if(mbStage === 2){ mbStage2(); }
+  else if(mbStage === 3){ mbStage3(); }
+  else { mbResetWalkthrough(); mbStage = 0; }
+  if(mbStage < 3) mbNextBtn.textContent = "Next step →";
+});
+mbResetBtn.addEventListener("click", mbResetWalkthrough);
+
+/* tally (sample many) */
+let nFifo=0, nLtdm=0;
+function drawOneTally(){
+  const r = RATIOS[ratio];
+  const pick = Math.random() < r.wf ? "FIFO" : "LTDM";
+  if(pick === "FIFO") nFifo++; else nLtdm++;
+  return pick;
+}
+function refreshTally(last){
+  const tot = nFifo + nLtdm || 1;
+  tFifo.textContent = nFifo; tLtdm.textContent = nLtdm;
+  tFifoBar.style.width = (nFifo/tot*100) + "%";
+  tLtdmBar.style.width = (nLtdm/tot*100) + "%";
+  if(last){
+    const col = last === "FIFO" ? "var(--fifo)" : "var(--ltdm)";
+    coinOut.innerHTML = `→ <span style="color:${col};font-weight:800">${last}</span> &nbsp;·&nbsp; FIFO ${(nFifo/tot).toFixed(2)} / LTDM ${(nLtdm/tot).toFixed(2)} &nbsp;<span style="color:var(--muted)">(target ${RATIOS[ratio].wf.toFixed(2)} / ${RATIOS[ratio].wl.toFixed(2)})</span>`;
+  }
+}
+function resetTally(){
+  nFifo = 0; nLtdm = 0;
+  coinOut.textContent = "—"; refreshTally();
+}
+document.getElementById("sample1").addEventListener("click", () => refreshTally(drawOneTally()));
+document.getElementById("sample50").addEventListener("click", () => { let l; for(let i=0;i<50;i++) l=drawOneTally(); refreshTally(l); });
+document.getElementById("resetTally").addEventListener("click", resetTally);
+
+/* ---------- section 5: epoch pipeline (train.py) ---------- */
+const NEW_FRAMES = N_SYNC*GEN_SEQ_LEN;            // 16384 stored frames
+const REAL_STEPS = NEW_FRAMES*ENV_REPEAT;          // 65536 env steps
+const steps = [
+  {t:"① Active task", tag:"none",
+   d:"<code class='mono'>SequentialEnvironments</code> exposes the current task via <code class='mono'>envs.funcs()</code>. Four parallel env copies run at once. The task changes every <code class='mono'>swap_sched</code> epochs (90 or 45), but the networks receive no task label.",
+   nums:[["Parallel envs",N_SYNC],["Swap every","90 or 45 epochs"],["Task ID given?","No"]]},
+  {t:"② Collect trajectories", tag:"real",
+   d:"<code class='mono'>generate_trajectories</code> runs the actor in the real environment (random policy at epoch 0). Observations, actions, rewards, continuation flags, and resets are recorded, then reshaped by <code class='mono'>reinterpret_nt_to_t_n</code>.",
+   nums:[["Frames stored",fmt(NEW_FRAMES)],["env_repeat","4 (Atari) / 1 (CoinRun)"],["Policy","actor (random at epoch 0)"]]},
+  {t:"③ replay.add()", tag:"none",
+   d:"The new data is sliced into 32 chunks of 512 steps and written to <b>both</b> buffers. FIFO overwrites the oldest chunks; LTDM retains chunks according to random reservoir keys. See section 6 for details.",
+   nums:[["New chunks",CHUNKS_PER_EPOCH],["Steps / chunk",SLOT_LEN],["Goes to","FIFO + LTDM"]]},
+  {t:"④ Evaluate (every 10 epochs)", tag:"real",
+   d:"If <code class='mono'>epoch % 10 == 0</code>, <code class='mono'>evaluate()</code> runs the current actor on <b>all 6 tasks</b> in the suite. In <code class='mono'>train.py</code> this happens before world-model training.",
+   nums:[["Eval tasks","all 6"],["Rollouts each","16 (Atari) / 256 (CoinRun)"],["Trains","nothing"]]},
+  {t:"⑤ Train the World Model", tag:"none",
+   d:"Run <code class='mono'>steps_per_batch</code> gradient updates. Each calls <code class='mono'>replay.minibatch()</code> then <code class='mono'>wm.compute_loss()</code>. See section 7 for the sampling walkthrough.",
+   nums:[["WM updates",fmt(STEPS_PER_BATCH)],["Frames / update",MB_N*MB_T],["Trains","World model"]]},
+  {t:"⑥ Train the Actor-Critic", tag:"dream",
+   d:"<code class='mono'>train_ac_from_wm()</code> runs 800 imagined actor-critic updates. Short latent rollouts are generated by the world model, with no additional environment interaction.",
+   nums:[["Dream rounds",fmt(AC_TRAIN_STEPS)],["Parallel dreams",AC_TRAIN_SYNC],["Steps / dream",DREAM_STEPS]]},
+  {t:"⑦ envs.step()", tag:"none",
+   d:"<code class='mono'>envs.step()</code> increments the curriculum counter at the end of the epoch. Every <code class='mono'>swap_sched</code> epochs the environment wrapper loads the next task before the next epoch begins.",
+   nums:[["Counter","+1"],["Task switch?","every swap_sched"],["Loop","back to ①"]]},
+];
+let stepI=0;
+const pipeNodes=[...document.querySelectorAll("#pipe .node")];
+function renderStep(){
+  const s=steps[stepI];
+  pipeNodes.forEach((n,i)=>{
+    n.classList.toggle("active",i===stepI);
+    n.classList.toggle("done",i<stepI);
+  });
+  const tagHtml = s.tag==="real" ? '<span class="realtag real">USES REAL GAME</span>'
+                : s.tag==="dream" ? '<span class="realtag dream">WORLD MODEL ONLY</span>'
+                : '<span class="realtag none">NO ENV INTERACTION</span>';
+  stepBody.innerHTML =
+    `<h3>${s.t} &nbsp; ${tagHtml}</h3><p style="color:var(--muted);margin:0">${s.d}</p>`+
+    `<div class="nums">`+s.nums.map(x=>`<span class="chip"><b>${x[1]}</b> <span>${x[0]}</span></span>`).join("")+`</div>`;
+  stepCount.textContent = `Step ${stepI+1} of ${steps.length}`;
+}
+document.getElementById("nextStep").addEventListener("click",()=>{stepI=(stepI+1)%steps.length;renderStep();});
+document.getElementById("prevStep").addEventListener("click",()=>{stepI=(stepI-1+steps.length)%steps.length;renderStep();});
+pipeNodes.forEach(n=>n.addEventListener("click",()=>{stepI=+n.dataset.i;renderStep();}));
+document.addEventListener("keydown",e=>{
+  if(e.key==="ArrowRight"){stepI=(stepI+1)%steps.length;renderStep();}
+  if(e.key==="ArrowLeft"){stepI=(stepI-1+steps.length)%steps.length;renderStep();}
+});
+
+/* ---------- section 7: curriculum (swap_sched 90 vs 45) ---------- */
+const timeline=document.getElementById("timeline");
+const epochBar=document.getElementById("epochBar");
+const epochSlider=document.getElementById("epochSlider");
+const cyc1=document.getElementById("cyc1"), cyc2=document.getElementById("cyc2");
+const playEpochBtn=document.getElementById("playEpoch");
+const pauseEpochBtn=document.getElementById("pauseEpoch");
+let epochPlayRaf = null;
+let epochPlayStart = 0;
+let epochPlayFrom = 0;
+const EPOCH_PLAY_MS = 18; // wall-clock ms per epoch (~10 s for 0–539)
+let lastTimelineIdx = -1;
+
+function epochRangesFor(i){
+  // returns label of epoch ranges for game i under current swap
+  if(swap===90){
+    return [`epochs ${i*90}–${i*90+89}`];
+  }
+  return [`C1: ${i*45}–${i*45+44}`, `C2: ${270+i*45}–${270+i*45+44}`];
+}
+function buildTimeline(){
+  lastTimelineIdx = -1;
+  const games=GAMES();
+  timeline.innerHTML="";
+  games.forEach((g,i)=>{
+    const d=document.createElement("div");
+    d.className="game"; d.dataset.i=i;
+    d.innerHTML=`${i+1}. ${g.n}`+
+      epochRangesFor(i).map(r=>`<small>${r}</small>`).join("")+
+      `<small>${g.info}</small>`;
+    timeline.appendChild(d);
+  });
+  // epoch bar: colored segments per task visit
+  epochBar.innerHTML="";
+  const visits = swap===90 ? 6 : 12;
+  for(let v=0;v<visits;v++){
+    const gi = v % games.length;
+    const seg=document.createElement("i");
+    seg.className="seg-task";
+    seg.style.left=(v*swap/TOTAL_EPOCHS*100)+"%";
+    seg.style.width=(swap/TOTAL_EPOCHS*100)+"%";
+    seg.style.background=games[gi].c;
+    epochBar.appendChild(seg);
+  }
+  const marker=document.createElement("i");
+  marker.className="marker"; marker.id="epochMarker";
+  epochBar.appendChild(marker);
+}
+function taskTint(hex, alpha){
+  const h=hex.replace("#","");
+  const r=parseInt(h.slice(0,2),16), g=parseInt(h.slice(2,4),16), b=parseInt(h.slice(4,6),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+function updateEpoch(){
+  const games=GAMES(), su=SUITES[suite], word=su.label;
+  const e=+epochSlider.value;
+  const idx=Math.floor(e/swap)%games.length;
+  const cycle = swap===45 ? Math.floor(e/270)+1 : 1;
+  epochVal.textContent=`${e} / ${TOTAL_EPOCHS-1}`;
+  if(idx !== lastTimelineIdx){
+    lastTimelineIdx = idx;
+    [...timeline.children].forEach((c,i)=>{
+      const on = i===idx;
+      c.classList.toggle("cur", on);
+      if(on){
+        c.style.borderColor = games[i].c;
+        c.style.background = taskTint(games[i].c, 0.14);
+        c.style.color = games[i].c;
+      } else {
+        c.style.borderColor = "";
+        c.style.background = "";
+        c.style.color = "";
+      }
+    });
+  }
+  const marker=document.getElementById("epochMarker");
+  marker.style.left=(e/TOTAL_EPOCHS*100)+"%";
+  marker.style.background=games[idx].c;
+  if(swap===45){
+    cyc1.classList.toggle("on",cycle===1);
+    cyc2.classList.toggle("on",cycle===2);
+  } else {
+    cyc1.classList.add("on");
+  }
+  const g=games[idx];
+  let cycTxt="";
+  if(swap===45){
+    if(e===270) cycTxt=` <b>Cycle 1 just ended — the curriculum circles back to ${word} 1 (${games[0].n}).</b>`;
+  }
+  curNote.innerHTML=`Epoch <b>${e}</b> → ${su.desc(g)}${swap===45?` · <b>Cycle ${cycle}</b>`:""}.${cycTxt}`;
+}
+function setEpochPlaybackState(isPlaying){
+  if(playEpochBtn) playEpochBtn.disabled = isPlaying;
+  if(pauseEpochBtn) pauseEpochBtn.disabled = !isPlaying;
+}
+function pauseEpochPlayback(){
+  if(epochPlayRaf){
+    cancelAnimationFrame(epochPlayRaf);
+    epochPlayRaf = null;
+  }
+  epochPlayStart = 0;
+  setEpochPlaybackState(false);
+}
+function playEpochPlayback(){
+  pauseEpochPlayback();
+  if(+epochSlider.value >= TOTAL_EPOCHS - 1){
+    epochSlider.value = 0;
+    lastTimelineIdx = -1;
+    updateEpoch();
+  }
+  epochPlayFrom = +epochSlider.value;
+  epochPlayStart = performance.now();
+  setEpochPlaybackState(true);
+  function tick(now){
+    const target = Math.min(
+      epochPlayFrom + Math.floor((now - epochPlayStart) / EPOCH_PLAY_MS),
+      TOTAL_EPOCHS - 1
+    );
+    if(+epochSlider.value !== target){
+      epochSlider.value = target;
+      updateEpoch();
+    }
+    if(target >= TOTAL_EPOCHS - 1){
+      pauseEpochPlayback();
+      return;
+    }
+    epochPlayRaf = requestAnimationFrame(tick);
+  }
+  epochPlayRaf = requestAnimationFrame(tick);
+}
+function applySwap(){
+  const word=SUITES[suite].label;
+  if(swap===90){
+    cyc1.textContent=`One cycle · epochs 0–539 · each ${word} seen once for 90 epochs`;
+    cyc1.classList.add("on");
+    cyc2.style.display="none";
+  } else {
+    cyc1.textContent="Cycle 1 · epochs 0–269";
+    cyc2.textContent=`Cycle 2 · epochs 270–539 (back to ${word} 1)`;
+    cyc2.style.display="";
+  }
+  buildTimeline();
+  updateEpoch();
+}
+function applySuite(){
+  variantBox.style.display = suite==="coinrun" ? "" : "none";
+  applySwap();
+}
+document.querySelectorAll("#suiteBtns button").forEach(b=>{
+  b.addEventListener("click",()=>{
+    document.querySelectorAll("#suiteBtns button").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active");
+    suite=b.dataset.suite;
+    applySuite();
+  });
+});
+document.querySelectorAll("#schedBtns button").forEach(b=>{
+  b.addEventListener("click",()=>{
+    document.querySelectorAll("#schedBtns button").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active");
+    swap=+b.dataset.swap;
+    applySwap();
+  });
+});
+playEpochBtn?.addEventListener("click", playEpochPlayback);
+pauseEpochBtn?.addEventListener("click", pauseEpochPlayback);
+epochSlider.addEventListener("input",()=>{
+  pauseEpochPlayback();
+  lastTimelineIdx = -1;
+  updateEpoch();
+});
+
+/* ---------- init ---------- */
+applyRatio();
+renderStep();
+applySuite();
+setEpochPlaybackState(false);
+</script>
+</body>
+</html>
