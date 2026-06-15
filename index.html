@@ -806,27 +806,6 @@
     <p class="note">The ratio ablation traces a stability-plasticity axis. On Atari, allocating more capacity to LTDM generally reduces forgetting but weakens forward transfer; on CoinRun, where tasks share structure, differences between ratios are often within seed variability. AR50 is therefore a robust default, not a tuned optimum.</p>
   </section>
 
-  <!-- ===================== GLOSSARY ===================== -->
-  <section id="gloss">
-    <h2><span class="secnum">✦</span> Glossary</h2>
-    <table class="gloss">
-      <tr><td>ARROW</td><td>Augmented Replay for RObust World models: DreamerV3 with a dual-buffer replay distribution for continual RL.</td></tr>
-      <tr><td>World model</td><td>Learned latent dynamics model predicting images, rewards, and continuation signals from RSSM states.</td></tr>
-      <tr><td>Internal state (z, h)</td><td>Concatenation of stochastic latent state z and deterministic GRU state h; the actor acts from this representation.</td></tr>
-      <tr><td>Spliced rollout</td><td>Fixed 512-step stored sequence; short episode fragments are concatenated with reset flags.</td></tr>
-      <tr><td>FIFO buffer</td><td>Short-term replay store that keeps the most recent trajectory chunks and evicts the oldest.</td></tr>
-      <tr><td>LTDM buffer</td><td>Long-term global distribution-matching replay store implemented as a random-key reservoir.</td></tr>
-      <tr><td>Minibatch</td><td>Sixteen chunks by 32 timesteps used for one world-model gradient update.</td></tr>
-      <tr><td>Reservoir key</td><td>Random priority determining whether LTDM retains an incoming chunk; it is not reward, surprise, or TD-error-based.</td></tr>
-      <tr><td>No task IDs</td><td>The learner receives observations, actions, rewards, continuations, and resets, but no explicit task label.</td></tr>
-      <tr><td>Forgetting</td><td>Drop in normalized performance after leaving a task; lower is better and negative values indicate backward transfer.</td></tr>
-      <tr><td>Forward transfer</td><td>Learning-speed comparison between continual and single-task training; near-zero is desirable when tasks are unrelated.</td></tr>
-      <tr><td>WC-ACC</td><td>Worst-case accuracy metric balancing current-task plasticity against retained minimum performance on earlier tasks.</td></tr>
-      <tr><td>Max-F / Recovery</td><td>Two-cycle metrics measuring degradation before revisiting a task and performance regained after the second exposure.</td></tr>
-      <tr><td>swap_sched</td><td>Epochs per task visit: 90 for one-cycle curricula, 45 for two-cycle curricula.</td></tr>
-      <tr><td>Shared structure</td><td>Atari comprises unrelated games; CoinRun comprises related Procgen variants where representation reuse is possible.</td></tr>
-    </table>
-  </section>
 
   <div class="footer">
     Built from the ARROW manuscript, <code class="mono">Code/ARROW_and_DV3/</code>, and the Atari/CoinRun configuration files. Interactive values reflect the reported training protocol unless noted.
