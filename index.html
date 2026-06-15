@@ -26,7 +26,7 @@
     --shadow: 0 4px 18px rgba(22,32,58,.07);
   }
   * { box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
+  html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
   body {
     margin: 0;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -34,9 +34,16 @@
     color: var(--ink);
     line-height: 1.6;
     font-size: 16.5px;
+    overflow-x: clip;
   }
   a { color: var(--accent); }
-  .wrap { max-width: 1100px; margin: 0 auto; padding: 18px 22px 100px; }
+  .wrap {
+    max-width: 1100px; margin: 0 auto;
+    padding: 18px 22px 100px;
+    padding-left: max(22px, env(safe-area-inset-left));
+    padding-right: max(22px, env(safe-area-inset-right));
+    padding-bottom: max(100px, env(safe-area-inset-bottom));
+  }
 
   /* top nav for presenting */
   nav.topnav {
@@ -45,6 +52,9 @@
     border-bottom: 1px solid var(--line);
     display: flex; gap: 4px; flex-wrap: wrap; justify-content: center;
     padding: 8px 10px;
+    padding-top: max(8px, env(safe-area-inset-top));
+    padding-left: max(10px, env(safe-area-inset-left));
+    padding-right: max(10px, env(safe-area-inset-right));
   }
   nav.topnav a {
     text-decoration: none; color: var(--muted); font-size: .8rem; font-weight: 600;
@@ -79,11 +89,11 @@
     scroll-margin-top: 70px;
   }
   .secnum {
-    display:inline-flex; align-items:center; justify-content:center;
+    display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;
     width:34px; height:34px; border-radius:10px; background:var(--accent); color:#fff;
     font-weight:800; font-size:1.05rem; margin-right:10px; vertical-align:middle;
   }
-  section h2 { margin: 0 0 6px; font-size: 1.55rem; display:flex; align-items:center; }
+  section h2 { margin: 0 0 6px; font-size: 1.55rem; display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
   .sub { color: var(--muted); margin: 0 0 22px; font-size: 1rem; }
   .grid3 { display:grid; grid-template-columns: repeat(3,1fr); gap:16px; }
   .grid2 { display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
@@ -102,7 +112,7 @@
   .tag.actor{ background:var(--accent-soft); color:var(--accent);}
   .tag.wm{ background:var(--good-soft); color:var(--good);}
   .tag.buf{ background:var(--fifo-soft); color:var(--fifo);}
-  code, .mono { font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; }
+  code, .mono { font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; word-break: break-word; overflow-wrap: anywhere; }
   .mono { background:#eef1f8; border:1px solid var(--line); border-radius:6px; padding:1px 6px; font-size:.85em; color:#3b4768; }
 
   /* Ratio control */
@@ -111,6 +121,7 @@
     flex:1; min-width:160px; cursor:pointer; padding:15px 14px; border-radius:13px;
     border:2px solid var(--line); background:#fff; color:var(--ink);
     font-size:1.05rem; font-weight:700; transition:.15s; text-align:left;
+    touch-action: manipulation; min-height:44px;
   }
   .ratio-btns button small{ display:block; font-weight:500; color:var(--muted); font-size:.78rem; margin-top:4px;}
   .ratio-btns button.active { border-color:var(--accent); background:var(--accent-soft); box-shadow:0 0 0 3px rgba(109,79,224,.15);}
@@ -133,6 +144,12 @@
   .dot.fifo{background:var(--fifo);} .dot.ltdm{background:var(--ltdm);} .dot.new{background:var(--good);} .dot.hit{background:var(--bad);}
 
   /* buffer grids */
+  .grid-scroll{
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+    margin: 0 -2px; padding: 2px 2px 6px;
+    scrollbar-width: thin;
+  }
+  .grid-scroll .grid{ min-width: min(100%, 260px); }
   .buf-wrap{ display:grid; grid-template-columns:1fr 1fr; gap:20px;}
   @media(max-width:860px){ .buf-wrap{ grid-template-columns:1fr; } }
   .buf-box h4{ margin:0 0 4px; display:flex; align-items:center; gap:8px; font-size:1.02rem;}
@@ -178,7 +195,8 @@
 
   /* controls */
   .btn{ cursor:pointer; border:1px solid var(--line); background:#fff; color:var(--ink);
-        border-radius:11px; padding:11px 18px; font-weight:700; font-size:.95rem; transition:.15s;}
+        border-radius:11px; padding:11px 18px; font-weight:700; font-size:.95rem; transition:.15s;
+        touch-action: manipulation; min-height:44px;}
   .btn:hover{ border-color:var(--accent); color:var(--accent);}
   .btn.primary{ background:var(--accent); border-color:var(--accent); color:#fff;}
   .btn.primary:hover{ background:#5b3fd0; color:#fff;}
@@ -192,6 +210,7 @@
   .task-color-strip{ display:inline-flex; gap:2px; height:14px; border-radius:4px; overflow:hidden; border:1px solid rgba(0,0,0,.08); }
   .task-color-strip i{ display:block; width:10px; height:100%; }
   .controls{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:16px;}
+  .controls .btn{ display:inline-flex; align-items:center; justify-content:center; }
   .buf-action-bar{ margin: 18px 0 8px; }
   .buf-action-bar .controls{ margin-top:0; }
   .buf-status-line{ margin:10px 0 0; font-size:.88rem; color:var(--muted); min-height:1.4em; line-height:1.5; }
@@ -251,6 +270,7 @@
   .mb-slot-grid{
     display: grid; grid-template-columns: repeat(32, 1fr); gap: 3px;
     padding: 10px; background: var(--panel2); border-radius: 10px; border: 1px solid var(--line);
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
   }
   .mb-slot{
     aspect-ratio: 1; border-radius: 3px; background: #e8ecf5; border: 1px solid #dde3ef;
@@ -274,7 +294,8 @@
   /* pipeline stepper */
   .pipe{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px;}
   .pipe .node{ flex:1; min-width:122px; text-align:center; padding:11px 8px; border-radius:11px;
-    border:2px solid var(--line); background:#fff; color:var(--muted); font-size:.83rem; font-weight:700; transition:.2s; cursor:pointer;}
+    border:2px solid var(--line); background:#fff; color:var(--muted); font-size:.83rem; font-weight:700; transition:.2s; cursor:pointer;
+    touch-action: manipulation; min-height:44px;}
   .pipe .node.active{ border-color:var(--accent); color:var(--accent); background:var(--accent-soft); box-shadow:0 0 0 3px rgba(109,79,224,.12);}
   .pipe .node.done{ color:var(--good); border-color:#a7d8b9; background:var(--good-soft);}
   .stepbody{ background:var(--panel2); border:1px solid var(--line); border-radius:14px; padding:22px; min-height:160px;}
@@ -293,6 +314,7 @@
     flex:1; min-width:220px; cursor:pointer; padding:15px 16px; border-radius:13px;
     border:2px solid var(--line); background:#fff; color:var(--ink);
     font-size:1.02rem; font-weight:700; transition:.15s; text-align:left;
+    touch-action: manipulation; min-height:44px;
   }
   .sched-btns button small{ display:block; font-weight:500; color:var(--muted); font-size:.8rem; margin-top:4px;}
   .sched-btns button.active{ border-color:var(--good); background:var(--good-soft); box-shadow:0 0 0 3px rgba(21,128,61,.12);}
@@ -325,6 +347,107 @@
 
   .note{ font-size:.9rem; color:#4c5878; background:var(--accent-soft); border-left:4px solid var(--accent); padding:11px 16px; margin:18px 0 0; border-radius:0 10px 10px 0;}
   .footer{ text-align:center; color:var(--muted); font-size:.82rem; margin-top:36px;}
+
+  /* ---- mobile & tablet ---- */
+  @media (max-width: 860px) {
+    nav.topnav {
+      flex-wrap: nowrap; justify-content: flex-start;
+      overflow-x: auto; -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    nav.topnav::-webkit-scrollbar { display: none; }
+    nav.topnav a { flex-shrink: 0; white-space: nowrap; }
+
+    .wrap { padding: 14px 14px 72px; padding-left: max(14px, env(safe-area-inset-left)); padding-right: max(14px, env(safe-area-inset-right)); }
+    header.hero { padding: 28px 8px 10px; }
+    header.hero h1 { font-size: 1.85rem; letter-spacing: -.35px; }
+    header.hero p { font-size: .98rem; }
+    section { padding: 22px 18px; margin: 18px 0; scroll-margin-top: 58px; }
+    section h2 { font-size: 1.28rem; }
+    .sub { font-size: .95rem; margin-bottom: 18px; }
+
+    .ratio-btns button, .sched-btns button { flex: 1 1 100%; min-width: 0; }
+    .split-bar { height: 44px; }
+    .split-bar .seg { font-size: .88rem; }
+    .stat .v { font-size: 1.25rem; }
+
+    .mb-buffers { grid-template-columns: 1fr; }
+    .mb-stage-body { padding: 18px 16px; min-height: 160px; }
+    .mb-stage-header { padding: 12px 14px; }
+    .stepbody { padding: 16px; }
+    .ltdm-plot-box { padding: 14px 16px; }
+
+    .timeline {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .timeline .game { flex: none; padding: 10px 6px; font-size: .68rem; }
+    .timeline .game.cur { transform: none; }
+
+    table.gloss td:first-child { width: 140px; }
+  }
+
+  @media (max-width: 520px) {
+    .wrap { padding: 12px 12px 64px; }
+    header.hero h1 { font-size: 1.55rem; }
+    .hero-link { width: 100%; justify-content: center; }
+    section { padding: 18px 14px; border-radius: 14px; }
+    section h2 { font-size: 1.15rem; }
+    .secnum { width: 30px; height: 30px; font-size: .95rem; margin-right: 6px; }
+
+    .keypoints { grid-template-columns: 1fr; }
+    .stat-row { grid-template-columns: 1fr; }
+    .tally { grid-template-columns: 1fr; }
+
+    .timeline { grid-template-columns: repeat(2, 1fr); }
+    .cyclebar { flex-direction: column; gap: 6px; }
+
+    .slider-row {
+      flex-wrap: wrap; gap: 8px;
+    }
+    .slider-row input[type=range] {
+      flex: 1 1 100%; min-width: 0; height: 28px;
+    }
+    .slider-row #epochVal {
+      min-width: 0 !important; text-align: left !important; width: 100%;
+    }
+
+    .pipe .node {
+      flex: 1 1 calc(50% - 4px);
+      min-width: 0;
+      font-size: .78rem;
+      padding: 10px 6px;
+    }
+
+    .controls .btn { flex: 1 1 calc(50% - 5px); min-width: 0; text-align: center; justify-content: center; }
+    .buf-action-bar .controls .btn { flex: 1 1 100%; }
+    .buf-action-bar .controls #bufEpochLabel { flex: 1 1 100%; text-align: center; margin-top: 4px; }
+
+    .mb-crow {
+      grid-template-columns: 20px 1fr;
+      gap: 6px 8px;
+    }
+    .mb-crow .mb-crange {
+      grid-column: 2;
+      font-size: .68rem;
+    }
+
+    .cell { font-size: .58rem; }
+    .legend { gap: 10px; font-size: .82rem; }
+    .note { font-size: .85rem; padding: 10px 12px; }
+
+    .ctrl-hint { display: none; }
+
+    table.gloss, table.gloss tbody, table.gloss tr, table.gloss td { display: block; width: 100%; }
+    table.gloss tr {
+      margin-bottom: 10px; padding: 12px 14px;
+      background: var(--panel2); border: 1px solid var(--line); border-radius: 12px;
+    }
+    table.gloss td { border: none; padding: 3px 0; }
+    table.gloss td:first-child { width: auto; margin-bottom: 4px; font-size: .92rem; }
+    table.gloss td:last-child { font-size: .88rem; }
+  }
 
   @media print {
     nav.topnav{ display:none; }
@@ -472,7 +595,7 @@
     <div class="controls" style="margin-top:12px">
       <button class="btn primary" id="playEpoch">Play curriculum</button>
       <button class="btn ghost" id="pauseEpoch">Pause</button>
-      <span style="color:var(--muted);font-size:.85rem">Play animates epochs 0-539; dragging the slider pauses playback.</span>
+      <span class="ctrl-hint" style="color:var(--muted);font-size:.85rem">Play animates epochs 0-539; dragging the slider pauses playback.</span>
     </div>
     <p class="note">The agent receives pixels, actions, rewards, continuation flags, and reset flags, but no explicit task-change label. Evaluation is performed every 10th epoch on all 6 tasks in the selected suite.</p>
     <p class="note" id="curNote"></p>
@@ -563,7 +686,7 @@
       <div class="buf-box">
         <h4><i class="dot fifo"></i> FIFO buffer <span class="mono" id="fifoCap">(512 slots)</span></h4>
         <p class="desc">A short-term store with deterministic recency bias: new chunks replace the oldest chunks, concentrating capacity on the current task.</p>
-        <div class="grid" id="fifoGrid"></div>
+        <div class="grid-scroll"><div class="grid" id="fifoGrid"></div></div>
         <div class="buf-stack-wrap">
           <div class="buf-stack-label">Task mix in FIFO right now</div>
           <div class="buf-stack" id="fifoStackBar"><div class="buf-stack-empty">empty — add an epoch</div></div>
@@ -573,7 +696,7 @@
       <div class="buf-box">
         <h4><i class="dot ltdm"></i> LTDM buffer <span class="mono" id="ltdmCap">(512 slots)</span></h4>
         <p class="desc">A long-term distribution-matching store: each chunk receives a random key and replaces the lowest-key slot only if its key is larger.</p>
-        <div class="grid" id="ltdmGrid"></div>
+        <div class="grid-scroll"><div class="grid" id="ltdmGrid"></div></div>
         <div class="buf-stack-wrap">
           <div class="buf-stack-label">Task mix in LTDM right now</div>
           <div class="buf-stack" id="ltdmStackBar"><div class="buf-stack-empty">empty — add an epoch</div></div>
@@ -1055,14 +1178,31 @@ function startBufHold(e){
   }, 320);
 }
 
+function gridColCount(n){
+  const w = window.innerWidth;
+  if(w <= 520) return n <= 64 ? 8 : 12;
+  if(w <= 860) return n <= 64 ? 12 : 16;
+  return Math.min(16, n <= 64 ? 16 : n <= 128 ? 16 : 24);
+}
+function applyGridCols(el, n){
+  if(el) el.style.gridTemplateColumns = `repeat(${gridColCount(n)}, 1fr)`;
+}
 function buildGrid(el, n){
-  el.style.gridTemplateColumns = `repeat(${Math.min(16, n <= 64 ? 16 : n <= 128 ? 16 : 24)}, 1fr)`;
+  applyGridCols(el, n);
   el.innerHTML="";
   for(let i=0;i<n;i++){
     const c=document.createElement("div");
     c.className="cell"; el.appendChild(c);
   }
 }
+let gridResizeTimer;
+window.addEventListener("resize", ()=>{
+  clearTimeout(gridResizeTimer);
+  gridResizeTimer = setTimeout(()=>{
+    if(typeof fifoGridCells === "number") applyGridCols(fifoGrid, fifoGridCells);
+    if(typeof ltdmGridCells === "number") applyGridCols(ltdmGrid, ltdmGridCells);
+  }, 120);
+});
 function resetBuffers(){
   restoreGridColors();
   const r = RATIOS[ratio];
@@ -1215,6 +1355,8 @@ function mbStage1(){
     </p>`;
 }
 
+function mbSlotGridCols(){ return window.innerWidth <= 520 ? 16 : window.innerWidth <= 860 ? 24 : 32; }
+
 function mbStage2(){
   const r = RATIOS[ratio];
   const nValid = mbLastPick === "FIFO" ? r.fifo : r.ltdm;
@@ -1226,16 +1368,17 @@ function mbStage2(){
   const pickedSet = new Set(picks);
   mbStageLabel.textContent = "Step 2 of 3 — Sample 16 trajectory chunks uniformly";
   mbSetDots(2);
+  const cols = mbSlotGridCols();
+  const show = Math.min(nValid, cols <= 16 ? 128 : cols <= 24 ? 192 : 256);
   let slots = "";
-  const show = Math.min(nValid, 256);
   for(let i = 0; i < show; i++){
     slots += `<div class="mb-slot${pickedSet.has(i) ? ` picked ${col}` : ""}"></div>`;
   }
-  const extraLabel = nValid > 256 ? `<p class="mb-slot-caption">Showing first 256 of ${nValid} slots. ${MB_N} highlighted = selected for this batch.</p>` : `<p class="mb-slot-caption">${nValid} total slots in <span style="font-weight:700;color:var(--${col})">${mbLastPick}</span>. ${MB_N} highlighted = selected for this batch.</p>`;
+  const extraLabel = nValid > show ? `<p class="mb-slot-caption">Showing first ${show} of ${nValid} slots. ${MB_N} highlighted = selected for this batch.</p>` : `<p class="mb-slot-caption">${nValid} total slots in <span style="font-weight:700;color:var(--${col})">${mbLastPick}</span>. ${MB_N} highlighted = selected for this batch.</p>`;
   mbStageBody.innerHTML = `
     <div class="mb-slot-section">
       <p class="mb-slot-label">Each square represents one stored 512-step chunk. <b>${MB_N} chunks are sampled uniformly</b>, without priority weights.</p>
-      <div class="mb-slot-grid">${slots}</div>
+      <div class="mb-slot-grid" style="grid-template-columns:repeat(${cols}, minmax(8px, 1fr))">${slots}</div>
       ${extraLabel}
     </div>`;
 }
