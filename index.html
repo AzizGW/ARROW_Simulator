@@ -346,10 +346,22 @@
   table.gloss td:last-child{ color:var(--muted);}
 
   .note{ font-size:.9rem; color:#4c5878; background:var(--accent-soft); border-left:4px solid var(--accent); padding:11px 16px; margin:18px 0 0; border-radius:0 10px 10px 0;}
+
+  .desktop-note{
+    display:none;
+    text-align:center; font-size:.88rem; font-weight:600; line-height:1.45;
+    color:#4c5878; background:#fff8e6; border-bottom:1px solid #f0d99a;
+    padding:10px 16px;
+    padding-left:max(16px, env(safe-area-inset-left));
+    padding-right:max(16px, env(safe-area-inset-right));
+  }
+
   .footer{ text-align:center; color:var(--muted); font-size:.82rem; margin-top:36px;}
 
   /* ---- mobile & tablet ---- */
   @media (max-width: 860px) {
+    .desktop-note { display: block; }
+
     nav.topnav {
       flex-wrap: nowrap; justify-content: flex-start;
       overflow-x: auto; -webkit-overflow-scrolling: touch;
@@ -456,6 +468,8 @@
 </style>
 </head>
 <body>
+
+<p class="desktop-note" role="note">This simulator is best viewed on a desktop or laptop — interactive grids and timelines are easier to explore on a larger screen.</p>
 
 <nav class="topnav">
   <a href="#s1">1 · Overview</a>
